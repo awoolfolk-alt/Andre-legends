@@ -11,12 +11,10 @@
 //   Result: if the Wi-Fi dies mid-game, nothing about the game breaks;
 //   the save simply syncs next time it can.
 //
-// AUTH MODEL (deliberately simple, per the design):
-//   - Any email + the shared cohort password gets an account. First use
-//     of an email CREATES the account; later uses SIGN IN.
-//   - After the first login we OFFER a personal password. Setting one
-//     replaces the shared one for that account forever (Supabase just
-//     updates the user's password — no schema change needed).
+// AUTH MODEL:
+//   - A player enters their own email and password.
+//   - First use of an email CREATES the account; later uses SIGN IN.
+//   - Shared cohort credentials are not used by the app.
 //   - Row Level Security in the database means a logged-in player can
 //     only ever read or write THEIR OWN save row.
 // ─────────────────────────────────────────────────────────────
@@ -101,7 +99,7 @@ export async function cloudLogin(email: string, password: string): Promise<Login
   return { ok: true, firstTime: true, email };
 }
 
-/** Replace the shared password with a personal one (first-login offer). */
+/** Change the signed-in player's password. */
 export async function cloudSetPassword(newPassword: string): Promise<{ ok: boolean; error?: string }> {
   const sb = supabase();
   if (!sb) return { ok: false, error: "Cloud saves are not configured yet." };

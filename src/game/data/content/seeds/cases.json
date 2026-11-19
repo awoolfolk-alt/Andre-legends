@@ -1,0 +1,36 @@
+[
+  {
+    "id": "case-unknown-usb",
+    "title": "Unknown removable media",
+    "stages": [
+      {
+        "stage": "detect",
+        "surface": "office",
+        "data": "S1"
+      },
+      {
+        "stage": "respond",
+        "choices": "S1"
+      },
+      {
+        "stage": "debrief",
+        "csfRooms": [
+          "Govern",
+          "Identify",
+          "Protect",
+          "Detect",
+          "Respond",
+          "Recover"
+        ]
+      },
+      {
+        "stage": "lessons",
+        "question": "What reporting or removable-media rule would help prevent this risk?",
+        "upgrades": [
+          "media-handling procedure",
+          "security awareness"
+        ]
+      }
+    ]
+  }
+]

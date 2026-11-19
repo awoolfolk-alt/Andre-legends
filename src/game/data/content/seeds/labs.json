@@ -1,0 +1,28 @@
+[
+  {
+    "id": "lab-risk-triage",
+    "game": "found-device",
+    "engine": "world",
+    "title": "Found-device first response",
+    "brief": "brief-security-foundations",
+    "scenario": "S1",
+    "checkpoints": [
+      {
+        "id": "cp-report",
+        "text": "Choose a safe response and identify the risk.",
+        "check": {
+          "type": "exists",
+          "path": "scenario:S1:best-action"
+        }
+      }
+    ],
+    "hints": [
+      "Do not connect a device you found. Follow the organization's reporting process."
+    ],
+    "followUpQuiz": "foundations-risk-01",
+    "objectives": [
+      "Recognize physical security risks",
+      "Choose a safe first response"
+    ]
+  }
+]

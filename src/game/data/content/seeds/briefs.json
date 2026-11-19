@@ -1,0 +1,32 @@
+[
+  {
+    "id": "brief-security-foundations",
+    "title": "Security foundations",
+    "district": "security",
+    "objective": "Google Cybersecurity Certificate · Foundations",
+    "keyTerms": [
+      {
+        "term": "Asset",
+        "def": "Something valuable an organization needs to protect, such as a laptop, account, or customer record."
+      },
+      {
+        "term": "Threat",
+        "def": "A person, event, or condition that could cause harm to an asset."
+      },
+      {
+        "term": "Vulnerability",
+        "def": "A weakness that a threat could take advantage of."
+      },
+      {
+        "term": "Risk",
+        "def": "The chance and impact of harm when a threat can exploit a vulnerability."
+      }
+    ],
+    "example": "A company laptop is an asset. Theft is a threat. Missing encryption is a vulnerability. The risk is that someone could steal the laptop and read its data.",
+    "diagram": "asset → threat exploits vulnerability → possible impact",
+    "watchOut": [
+      "A threat is not the same thing as a vulnerability: one could cause harm; the other is a weakness.",
+      "Risk is about possible harm, not proof that an incident already happened."
+    ]
+  }
+]

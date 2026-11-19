@@ -1,0 +1,42 @@
+[
+  {
+    "id": "S1",
+    "title": "USB drive in the parking lot",
+    "surface": "physical office",
+    "setting": "office parking lot",
+    "story": "You find an unmarked USB drive near the office entrance. It might belong to someone, but you do not know what is on it.",
+    "actions": [
+      {
+        "text": "Plug it into your work laptop to identify its owner",
+        "rating": "risky",
+        "feedback": "Unknown removable media can contain malicious files or attack hardware. Connecting it could expose your device or organization."
+      },
+      {
+        "text": "Leave it alone and tell a coworker",
+        "rating": "acceptable",
+        "feedback": "You avoided connecting it. Report it to the designated IT or security team so it can be handled safely."
+      },
+      {
+        "text": "Do not connect it; report where you found it to IT or security",
+        "rating": "best",
+        "feedback": "This avoids the bait and gives trained staff a chance to follow the organization's media-handling procedure."
+      }
+    ],
+    "typeAnswers": {
+      "attack": [
+        "usb baiting",
+        "baiting",
+        "removable media attack"
+      ],
+      "redFlags": [
+        "unknown device",
+        "unexpected usb",
+        "found media"
+      ]
+    },
+    "objectives": [
+      "Google Cybersecurity Certificate · Assets, Threats, and Vulnerabilities",
+      "Security+ · Security operations"
+    ]
+  }
+]

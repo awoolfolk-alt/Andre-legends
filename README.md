@@ -2,14 +2,37 @@
 
 ## Run locally
 
-Install dependencies and start the development server:
+Install dependencies and start the development server on port `3001` so it
+doesn't conflict with other projects running on your computer:
 
 ```bash
 npm ci
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open `http://localhost:3001/game` to play. The game runs locally on your
+computer; this does not publish it to the internet.
+
+Curriculum seed data is stored as editable JSON under
+`src/game/data/content/seeds/`. The schemas and runtime validation are in
+`src/game/data/content/`; invalid records or duplicate IDs stop loading with a
+specific validation error.
+
+## Cybersecurity study terminal
+
+Enter the Security+ training building in the game and use **Study Menu** to
+open the Typing Dojo, Quiz & spaced review, or Terminal Ops. The quiz deck has
+original practice questions for formats F1–F20; review progress and missed-card
+counts are saved in this browser. Terminal Ops runs against a fictional
+in-memory filesystem and never invokes the computer's shell or touches real
+files.
+
+Run the automated checks with:
+
+```bash
+npm test
+npm run typecheck
+```
 
 ## Deploy to GitHub Pages
 

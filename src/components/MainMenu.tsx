@@ -15,7 +15,7 @@ import { hasSave, listSlots, setActiveSlot, setPendingMode, type SlotId } from "
 // across devices (Supabase). Everything still works without it (guest mode).
 import {
   cloudReady, cloudLogin, cloudLogout, cloudEmail,
-  cloudSetPassword, initCloudSync, syncCloudSave,
+  initCloudSync, syncCloudSave,
 } from "@/game/cloud";
 
 // ─────────────────────────────────────────────────────────────
@@ -68,12 +68,9 @@ export default function MainMenu() {
   // any error to show, and whether to offer the personal-password step.
   const [cloudUser, setCloudUser] = useState<string | null>(null);
   const [loginEmail, setLoginEmail] = useState("");
-  const [loginPw, setLoginPw] = useState("cycle60"); // the shared cohort password, prefilled
-  const [newPw, setNewPw] = useState(""); // the optional personal password
+  const [loginPw, setLoginPw] = useState("");
   const [cloudBusy, setCloudBusy] = useState(false);
   const [cloudError, setCloudError] = useState<string | null>(null);
-  const [justCreated, setJustCreated] = useState(false); // first login ever -> offer own password
-  const [pwSaved, setPwSaved] = useState(false); // personal password was set
 
   // Re-read the local save and update the Continue button's label.
   const refreshExisting = () => setExisting(hasSave());
@@ -107,43 +104,14 @@ export default function MainMenu() {
     }
     await syncCloudSave(); // pull their cloud save down / push local progress up
     setCloudUser(res.email);
-    // The personal-password step is forced when the account is brand new OR
-    // when they just signed in WITH the shared password (meaning they never
-    // finished setting their own — e.g. closed the tab halfway through).
-    setJustCreated(res.firstTime || loginPw === "cycle60");
     refreshExisting();
     setCloudBusy(false);
-  };
-
-  // The REQUIRED personal password (replaces the shared one for this account).
-  // Rule: the shared password gets you in once; your own password keeps the
-  // account yours. We demand real strength here (upper, lower, number,
-  // symbol) so every player's final password is genuinely secure — the
-  // shared "cycle60" only ever has to pass the relaxed signup bar.
-  const PASSWORD_RULE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
-  const doSetPassword = async () => {
-    if (!PASSWORD_RULE.test(newPw)) {
-      setCloudError("Needs 8+ characters with an uppercase letter, a lowercase letter, a number, and a symbol.");
-      return;
-    }
-    setCloudBusy(true);
-    setCloudError(null);
-    const res = await cloudSetPassword(newPw);
-    setCloudBusy(false);
-    if (!res.ok) {
-      setCloudError(res.error ?? "Could not set the password. Try again.");
-      return;
-    }
-    setPwSaved(true);
-    setJustCreated(false);
   };
 
   // Sign out: back to guest mode. The local save stays on this device.
   const doLogout = async () => {
     await cloudLogout();
     setCloudUser(null);
-    setJustCreated(false);
-    setPwSaved(false);
   };
 
   // Cursor parallax: each layer moves a different amount = fake 3D depth
@@ -386,9 +354,6 @@ export default function MainMenu() {
             className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 p-4"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={() => {
-              // The first-login password step is mandatory: the panel only
-              // closes once the password is set (or they sign out above).
-              if (panel === "cloud" && justCreated && !pwSaved) return;
               setPanel(null);
             }}
           >
@@ -459,9 +424,8 @@ export default function MainMenu() {
                   </div>
                 </>
               )}
-              {/* Cloud Save: log in with any email and your legend follows
-                  you to any device. First login creates the account and
-                  offers a personal password. Guest play still works. */}
+              {/* Cloud Save: use your own account password. First login
+                  creates an account; guest play still works. */}
               {panel === "cloud" && (
                 <>
                   <h2 className="mb-4 font-display text-2xl text-legacy">☁ Cloud Save</h2>
@@ -476,8 +440,7 @@ export default function MainMenu() {
                   {cloudReady() && !cloudUser && (
                     <>
                       <p className="mb-4">
-                        Sign in with any email and your adventure follows you to any computer.
-                        First time? The account is created for you automatically.
+                        Sign in with your email and password. First time? A new account is created automatically.
                       </p>
                       <form
                         onSubmit={(e) => {
@@ -496,14 +459,14 @@ export default function MainMenu() {
                         />
                         <input
                           type="password"
+                          required
+                          minLength={8}
                           value={loginPw}
                           onChange={(e) => setLoginPw(e.target.value)}
                           placeholder="Password"
                           className="w-full rounded-md border border-legacy/50 bg-black/40 px-4 py-2 text-lg text-[#f3e3b5] outline-none placeholder:text-white/30 focus:border-energy"
                         />
-                        <p className="mt-2 text-sm text-white/50">
-                          Cohort password is prefilled — you'll set your own secure one on your first login.
-                        </p>
+                        <p className="mt-2 text-sm text-white/50">Use a unique password for your account. Guest play remains available without signing in.</p>
                         {cloudError && <p className="mt-3 text-sm text-[#ffb3b3]">{cloudError}</p>}
                         <motion.button
                           type="submit"
@@ -525,51 +488,6 @@ export default function MainMenu() {
                       <p className="mb-4 text-white/80">
                         Your legend now syncs to the cloud every time you save — pick it up on any device.
                       </p>
-                      {/* First login ever: setting a personal password is
-                          REQUIRED. The shared password is a key you hand back —
-                          after this, only their own password opens the save.
-                          There is deliberately no Skip button. */}
-                      {justCreated && !pwSaved && (
-                        <div className="mb-4 rounded-lg border border-energy/40 bg-energy/10 p-4">
-                          <p className="mb-2 text-[#7fd8ff]">
-                            First login — set your own password to continue.
-                          </p>
-                          <p className="mb-3 text-sm text-white/60">
-                            Required. After this, the shared password no longer opens your save. If you ever forget it, Andre can reset it for you.
-                          </p>
-                          <form
-                            onSubmit={(e) => {
-                              e.preventDefault();
-                              doSetPassword();
-                            }}
-                          >
-                            <input
-                              type="password"
-                              value={newPw}
-                              onChange={(e) => setNewPw(e.target.value)}
-                              placeholder="Your own password"
-                              className="w-full rounded-md border border-legacy/50 bg-black/40 px-4 py-2 text-lg text-[#f3e3b5] outline-none placeholder:text-white/30 focus:border-energy"
-                            />
-                            <p className="mt-2 text-xs text-white/50">
-                              8+ characters with UPPERCASE, lowercase, a number, and a symbol.
-                            </p>
-                            <motion.button
-                              type="submit"
-                              disabled={cloudBusy}
-                              whileHover={{ scale: 1.04 }}
-                              whileTap={{ scale: 0.97 }}
-                              className="mt-3 w-full rounded-lg border border-legacy/50 bg-legacy/20 px-4 py-2 text-[#f3e3b5] disabled:opacity-50"
-                            >
-                              {cloudBusy ? "Saving…" : "Set my password & continue"}
-                            </motion.button>
-                          </form>
-                        </div>
-                      )}
-                      {pwSaved && (
-                        <p className="mb-4 text-sm text-[#7be8a8]">
-                          Personal password set ✓ — the shared one no longer opens your save.
-                        </p>
-                      )}
                       {cloudError && <p className="mb-3 text-sm text-[#ffb3b3]">{cloudError}</p>}
                       <button onClick={doLogout} className="text-sm text-energy hover:underline">
                         Sign out (play as guest)
@@ -586,11 +504,7 @@ export default function MainMenu() {
                   <p className="mt-2 text-sm text-white/60">Built with Next.js, TypeScript, Tailwind CSS, Phaser 3, and Framer Motion. Made at i.c.stars Chicago.</p>
                 </>
               )}
-              {/* Close button: setting panel back to null hides the pop-up.
-                  Hidden during the mandatory first-login password step. */}
-              {!(panel === "cloud" && justCreated && !pwSaved) && (
-                <button onClick={() => setPanel(null)} className="mt-6 text-sm text-energy hover:underline">Close ✕</button>
-              )}
+              <button onClick={() => setPanel(null)} className="mt-6 text-sm text-energy hover:underline">Close ✕</button>
             </motion.div>
           </motion.div>
         )}

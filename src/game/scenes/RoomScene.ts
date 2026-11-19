@@ -137,6 +137,8 @@ export class RoomScene extends Phaser.Scene {
 
   create(data: RoomData) {
     const { width, height } = this.scale;
+    this.cameras.main.resetFX().fadeIn(1500, 0, 0, 0);
+
     if (data.studySubject) {
       this.drawStudyOffice(width, height, data.studySubject);
       this.studyCloseHandler = () => this.returnFromStudyStation();
@@ -194,8 +196,6 @@ export class RoomScene extends Phaser.Scene {
         this.input.keyboard?.on("keydown-R", this.handleArcadeRestart, this);
       }
     }
-
-    this.cameras.main.fadeIn(1500, 0, 0, 0);
 
     const exitText = this.add.text(width / 2, height - 82, "F or ESC  ·  Leave this building", {
       fontFamily: "Georgia, serif",
