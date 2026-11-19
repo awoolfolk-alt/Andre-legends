@@ -1,0 +1,639 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   MOCK PAGE STYLING — one stylesheet for the whole redesign review.
+   WHY one file? The HUD (health bars, quest tracker, skill chips) must look
+   IDENTICAL on every mock page, because in the real game it will be ONE HUD
+   rendered over every scene. Sharing the CSS is how the mock proves that.
+   The look borrows the 2D game's own language: deep navy panels, legend-gold
+   trim, serif display type — so reviewing the mock feels like reviewing the
+   game, not a foreign design deck.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.mock-stage {
+  position: relative;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  background: #05070f;
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.mock-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none; /* pointer drag = look around, not scroll */
+}
+
+/* ── HUD chrome ── */
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none; /* HUD is read-only; clicks pass to the canvas */
+  color: #e8ecff;
+}
+.hud > * {
+  position: absolute;
+}
+.hud .clickable {
+  pointer-events: auto; /* buttons inside the HUD opt back in */
+}
+
+.hud-name {
+  top: 14px;
+  left: 18px;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  color: #ffd75e;
+  text-shadow: 0 2px 6px #000;
+}
+.hud-bars {
+  top: 36px;
+  left: 18px;
+  width: min(230px, 34vw);
+}
+.bar {
+  height: 12px;
+  border: 1px solid rgba(212, 167, 44, 0.85);
+  background: rgba(5, 7, 15, 0.72);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.bar > i {
+  display: block;
+  height: 100%;
+  transition: width 0.25s ease;
+}
+.bar.hp > i {
+  background: linear-gradient(90deg, #8d1f2d, #d64550);
+}
+.bar.xp {
+  height: 7px;
+}
+.bar.xp > i {
+  background: linear-gradient(90deg, #2b6cb0, #63b3ed);
+}
+
+.hud-quest {
+  top: 14px;
+  right: 18px;
+  width: min(260px, 44vw);
+  background: rgba(13, 24, 48, 0.88);
+  border: 1px solid rgba(212, 167, 44, 0.7);
+  border-radius: 6px;
+  padding: 10px 14px;
+  text-align: right;
+}
+.hud-quest small {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: #8fa1d6;
+}
+.hud-quest b {
+  display: block;
+  font-size: 15px;
+  color: #ffd75e;
+  margin: 2px 0;
+}
+.hud-quest span {
+  font-size: 12px;
+  color: #c8d2ff;
+  line-height: 1.35;
+  display: block;
+}
+.hud-quest em {
+  font-size: 11px;
+  color: #8fa1d6;
+  font-style: normal;
+}
+
+.hud-skills {
+  bottom: 16px;
+  left: 18px;
+  display: flex;
+  gap: 8px;
+}
+.skill-chip {
+  border: 1px solid rgba(212, 167, 44, 0.55);
+  background: rgba(13, 24, 48, 0.85);
+  border-radius: 5px;
+  padding: 6px 10px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: #f3e3b5;
+}
+.skill-chip b {
+  color: #ffd75e;
+  margin-right: 5px;
+}
+
+.hud-hint {
+  bottom: 16px;
+  right: 18px;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: #9fb0e0;
+  text-shadow: 0 1px 4px #000;
+}
+
+.hud-cross {
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  margin: -2px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
+}
+
+.hud-prompt {
+  left: 50%;
+  bottom: 22%;
+  transform: translateX(-50%);
+  background: rgba(13, 24, 48, 0.9);
+  border: 1px solid #d4a72c;
+  border-radius: 6px;
+  padding: 8px 18px;
+  font-size: 14px;
+  color: #f3e3b5;
+  white-space: nowrap;
+}
+.hud-prompt b {
+  color: #ffd75e;
+  border: 1px solid #d4a72c;
+  border-radius: 4px;
+  padding: 0 7px;
+  margin-right: 8px;
+}
+
+/* Boss bar: top-center, 8 segments — each segment is one melee threshold,
+   because the Shadow fight alternates sword ⇄ word at every 1/8. */
+.boss-bar {
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(430px, 62vw);
+  text-align: center;
+}
+.boss-bar .boss-name {
+  font-size: 14px;
+  letter-spacing: 0.3em;
+  color: #ffb3b3;
+  text-shadow: 0 2px 8px #000;
+  margin-bottom: 5px;
+}
+.boss-bar .segments {
+  display: flex;
+  gap: 3px;
+  height: 13px;
+  border: 1px solid rgba(255, 180, 180, 0.5);
+  background: rgba(5, 7, 15, 0.7);
+  border-radius: 3px;
+  padding: 2px;
+}
+.boss-bar .segments i {
+  flex: 1;
+  background: linear-gradient(180deg, #6d28d9, #3b0764);
+  border-radius: 1px;
+}
+.boss-bar .segments i.lost {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* The announcement: letterbox bars + a banner, GTA/Zelda-boss style. */
+.announce {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.announce.on {
+  opacity: 1;
+}
+.announce .lb {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 11vh;
+  background: #000;
+}
+.announce .lb.top {
+  top: 0;
+}
+.announce .lb.bot {
+  bottom: 0;
+}
+.announce .banner {
+  position: absolute;
+  top: 16vh;
+  left: 0;
+  right: 0;
+  text-align: center;
+}
+.announce .banner small {
+  display: block;
+  font-size: 12px;
+  letter-spacing: 0.5em;
+  color: #ffb3b3;
+}
+.announce .banner b {
+  display: block;
+  font-size: clamp(22px, 4.6vw, 44px);
+  letter-spacing: 0.18em;
+  color: #ffd75e;
+  text-shadow: 0 0 24px rgba(212, 90, 44, 0.55), 0 3px 10px #000;
+}
+
+/* ── The mock frame: what page, what it proves, review controls ── */
+.mock-tag {
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: #0b1026;
+  background: #ffd75e;
+  border-radius: 3px;
+  padding: 3px 10px;
+  z-index: 5;
+}
+.with-boss .mock-tag {
+  top: auto;
+  bottom: 60px;
+}
+
+.mock-note {
+  left: 18px;
+  bottom: 64px;
+  max-width: min(360px, 78vw);
+  background: rgba(13, 24, 48, 0.9);
+  border: 1px solid rgba(212, 167, 44, 0.55);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #c8d2ff;
+}
+.mock-note b {
+  color: #ffd75e;
+  display: block;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  margin-bottom: 4px;
+}
+.mock-note .row {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.mock-note button,
+.mock-note a {
+  pointer-events: auto;
+  font: inherit;
+  font-size: 12px;
+  color: #f3e3b5;
+  background: #1b2a4a;
+  border: 1px solid #d4a72c;
+  border-radius: 5px;
+  padding: 6px 12px;
+  cursor: pointer;
+  text-decoration: none;
+}
+.mock-note button:hover,
+.mock-note a:hover {
+  color: #ffd75e;
+}
+
+/* Mock index -------------------------------------------------------------- */
+.mock-index {
+  min-height: 100dvh;
+  background:
+    radial-gradient(1200px 500px at 80% -10%, rgba(212, 167, 44, 0.14), transparent 60%),
+    radial-gradient(900px 500px at 10% 110%, rgba(43, 108, 176, 0.16), transparent 60%),
+    #0b1026;
+  color: #e8ecff;
+  font-family: Georgia, serif;
+  padding: 56px 22px 90px;
+}
+.mock-index .wrap {
+  max-width: 980px;
+  margin: 0 auto;
+}
+.mock-index .kicker {
+  font-size: 12px;
+  letter-spacing: 0.4em;
+  color: #8fa1d6;
+}
+.mock-index h1 {
+  font-size: clamp(30px, 5.4vw, 52px);
+  color: #ffd75e;
+  letter-spacing: 0.06em;
+  margin: 8px 0 6px;
+  text-shadow: 0 3px 18px rgba(212, 167, 44, 0.35);
+}
+.mock-index .sub {
+  color: #c8d2ff;
+  font-size: 15px;
+  line-height: 1.6;
+  max-width: 70ch;
+}
+.mock-index .grid {
+  margin-top: 34px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.mock-card {
+  display: block;
+  border: 1px solid rgba(212, 167, 44, 0.45);
+  background: rgba(13, 24, 48, 0.75);
+  border-radius: 10px;
+  padding: 18px 20px;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.mock-card:hover {
+  transform: translateY(-3px);
+  border-color: #ffd75e;
+}
+.mock-card .num {
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: #8fa1d6;
+}
+.mock-card h2 {
+  font-size: 19px;
+  color: #ffd75e;
+  margin: 6px 0 6px;
+  letter-spacing: 0.04em;
+}
+.mock-card p {
+  font-size: 13px;
+  color: #c8d2ff;
+  line-height: 1.5;
+  margin: 0;
+}
+.mock-card .go {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #ffd75e;
+  letter-spacing: 0.14em;
+}
+.mock-index table {
+  width: 100%;
+  margin-top: 40px;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.mock-index caption {
+  text-align: left;
+  letter-spacing: 0.25em;
+  font-size: 12px;
+  color: #8fa1d6;
+  padding-bottom: 10px;
+}
+.mock-index th,
+.mock-index td {
+  border: 1px solid rgba(143, 161, 214, 0.3);
+  padding: 9px 12px;
+  text-align: left;
+  vertical-align: top;
+  line-height: 1.45;
+}
+.mock-index th {
+  color: #ffd75e;
+  letter-spacing: 0.08em;
+  background: rgba(13, 24, 48, 0.8);
+}
+.mock-index td {
+  color: #c8d2ff;
+  background: rgba(13, 24, 48, 0.45);
+}
+.mock-index .foot {
+  margin-top: 40px;
+  font-size: 12.5px;
+  color: #8fa1d6;
+  line-height: 1.7;
+  border-top: 1px solid rgba(143, 161, 214, 0.25);
+  padding-top: 18px;
+}
+.mock-index .foot a {
+  color: #ffd75e;
+}
+
+/* ── Word duel overlay (Shadow fight mock) ── */
+.word-phase {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 12vh;
+  pointer-events: none;
+}
+.word-slots {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.word-slots i {
+  width: clamp(34px, 6vw, 52px);
+  height: clamp(46px, 8vw, 66px);
+  border: 1px solid rgba(127, 216, 255, 0.5);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(22px, 4vw, 34px);
+  font-style: normal;
+  color: #fff;
+  background: rgba(5, 7, 15, 0.65);
+  text-shadow: 0 0 14px rgba(127, 216, 255, 0.8);
+  transition: all 0.18s ease;
+}
+.word-slots i.lit {
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0 22px rgba(255, 255, 255, 0.45);
+}
+.word-slots i.err {
+  border-color: #ff5a5a;
+  background: rgba(141, 31, 45, 0.5);
+}
+.word-caption {
+  font-size: 13px;
+  color: #c8d2ff;
+  letter-spacing: 0.12em;
+  text-shadow: 0 2px 8px #000;
+  max-width: 92vw; /* long affirmations must wrap, never bleed off-screen */
+  text-align: center;
+}
+.word-caption b {
+  color: #ffd75e;
+}
+.word-keys {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  max-width: 420px;
+  pointer-events: auto;
+}
+.word-keys button {
+  width: 40px;
+  height: 44px;
+  font: inherit;
+  font-size: 16px;
+  color: #e8ecff;
+  background: rgba(13, 24, 48, 0.9);
+  border: 1px solid rgba(127, 216, 255, 0.4);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.word-keys button:hover {
+  border-color: #ffd75e;
+  color: #ffd75e;
+}
+.shake {
+  animation: mockshake 0.4s ease;
+}
+@keyframes mockshake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-9px); }
+  50% { transform: translateX(7px); }
+  75% { transform: translateX(-4px); }
+}
+
+/* ── Death screen ── */
+.death-veil {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(20, 0, 0, 0.25), rgba(0, 0, 0, 0.88));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 1.1s ease;
+}
+.death-veil.on {
+  opacity: 1;
+}
+.death-word {
+  font-size: clamp(44px, 10vw, 110px);
+  letter-spacing: 0.22em;
+  color: #d64550;
+  text-shadow: 0 0 44px rgba(214, 69, 80, 0.5), 0 4px 18px #000;
+  transform: scale(2.6);
+  opacity: 0;
+  filter: blur(6px);
+}
+.death-veil.on .death-word {
+  animation: slam 0.85s cubic-bezier(0.2, 1.4, 0.3, 1) 0.55s forwards;
+}
+@keyframes slam {
+  to {
+    transform: scale(1);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+.death-line {
+  margin-top: 26px;
+  font-size: clamp(14px, 2.2vw, 19px);
+  color: #f3e3b5;
+  letter-spacing: 0.06em;
+  text-align: center;
+  max-width: 34ch;
+  line-height: 1.6;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  text-shadow: 0 2px 10px #000;
+}
+.death-veil.on .death-line {
+  opacity: 1;
+  transition-delay: 1.6s;
+}
+.death-respawn {
+  margin-top: 40px;
+  pointer-events: auto;
+  font: inherit;
+  font-size: 15px;
+  letter-spacing: 0.2em;
+  color: #0b1026;
+  background: #ffd75e;
+  border: none;
+  border-radius: 6px;
+  padding: 13px 34px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.8s ease, transform 0.15s ease;
+}
+.death-veil.on .death-respawn {
+  opacity: 1;
+  transition-delay: 2.3s;
+}
+.death-respawn:hover {
+  transform: scale(1.05);
+}
+
+/* When you fall, the world itself loses its color — the canvas, not the HUD */
+.mock-stage.dead .mock-canvas {
+  filter: saturate(0.12) brightness(0.55);
+  transition: filter 1.4s ease;
+}
+.mock-stage .mock-canvas {
+  transition: filter 1.4s ease;
+}
+
+/* Kingdom plaques ---------------------------------------------------------- */
+.plaque {
+  position: absolute;
+  transform: translate(-50%, -115%);
+  background: rgba(5, 10, 24, 0.9);
+  border: 1px solid rgba(127, 216, 255, 0.65);
+  border-radius: 8px;
+  padding: 10px 14px;
+  width: 240px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #cfe8ff;
+  pointer-events: none;
+}
+.plaque b {
+  color: #7fd8ff;
+  display: block;
+  letter-spacing: 0.14em;
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+.plaque.gold {
+  border-color: rgba(255, 215, 94, 0.7);
+}
+.plaque.gold b {
+  color: #ffd75e;
+}
+
+@media (max-width: 640px) {
+  .mock-note {
+    bottom: 110px;
+    font-size: 11.5px;
+    padding: 10px 12px;
+  }
+  .hud-quest {
+    display: none; /* small screens keep the world clean in the mock */
+  }
+  .hud-hint {
+    display: none;
+  }
+}

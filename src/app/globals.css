@@ -1,0 +1,124 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: #060b16;
+  color: #f2f4ff;
+  /* "clip" (not "hidden"): hidden turns body into a scroll container,
+     which breaks window scrolling on pages like /vision on mobile. */
+  overflow-x: clip;
+  /* The game owns all gestures on its page; don't let a joystick drag
+     pull-to-refresh or scroll the page behind it. */
+  overscroll-behavior: none;
+  /* Keep phones from inflating text in landscape. */
+  text-size-adjust: 100%;
+}
+
+.portfolio-scroll {
+  height: 100vh;
+  height: 100dvh; /* phones: real visible height, not the URL-bar-inflated one */
+  overflow-y: auto;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgb(67 31 57 / 38%), transparent 50%),
+    #060b16;
+  color: #f2f4ff;
+  scrollbar-color: #d4a72c #10182a;
+}
+
+.portfolio-embedded {
+  height: 100%;
+}
+
+.title-stage-shell {
+  width: 100%;
+}
+
+.title-stage {
+  width: min(100vw, 177.7778vh);
+  flex: none;
+}
+
+.title-image-menu {
+  position: absolute;
+  inset: 0;
+}
+
+.title-image-button {
+  position: absolute;
+  left: 8%;
+  width: 25.5%;
+  height: 8.7%;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.title-image-button:hover,
+.title-image-button:focus-visible {
+  border-color: rgb(129 225 255 / 85%);
+  background: rgb(74 195 255 / 10%);
+  box-shadow: 0 0 20px rgb(55 196 255 / 35%);
+}
+
+.title-mobile-menu {
+  display: none;
+}
+
+.title-page-leaving .title-image-menu {
+  pointer-events: none;
+}
+
+@media (max-aspect-ratio: 4/5) {
+  .title-page {
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow-y: auto;
+  }
+
+  .title-stage-shell {
+    flex: none;
+  }
+
+  .title-stage {
+    width: 100vw;
+  }
+
+  .title-image-menu {
+    display: none;
+  }
+
+  .title-mobile-menu {
+    display: grid;
+    width: min(100% - 2rem, 28rem);
+    gap: 0.5rem;
+    padding: 0.75rem 0 1rem;
+  }
+
+  .title-mobile-menu button {
+    min-height: 2.75rem;
+    border: 1px solid rgb(126 204 255 / 55%);
+    border-radius: 0.6rem;
+    background: linear-gradient(120deg, rgb(30 58 91 / 96%), rgb(13 22 42 / 96%));
+    color: #f2f4ff;
+    font: inherit;
+    font-weight: 700;
+    text-shadow: 0 1px 2px #071426;
+  }
+
+  .title-mobile-menu button:focus-visible {
+    outline: 3px solid #9be7ff;
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .title-image-button {
+    transition: none;
+  }
+}
