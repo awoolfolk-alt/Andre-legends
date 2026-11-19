@@ -1,36 +1,97 @@
 [
   {
-    "id": "case-unknown-usb",
-    "title": "Unknown removable media",
+    "id": "case-recipe-redirect",
+    "title": "The Recipe Redirect",
+    "objectives": ["Security+ · web threats", "Security+ · incident response", "Network+ · packet analysis"],
     "stages": [
-      {
-        "stage": "detect",
-        "surface": "office",
-        "data": "S1"
-      },
-      {
-        "stage": "respond",
-        "choices": "S1"
-      },
-      {
-        "stage": "debrief",
-        "csfRooms": [
-          "Govern",
-          "Identify",
-          "Protect",
-          "Detect",
-          "Respond",
-          "Recover"
-        ]
-      },
-      {
-        "stage": "lessons",
-        "question": "What reporting or removable-media rule would help prevent this risk?",
-        "upgrades": [
-          "media-handling procedure",
-          "security awareness"
-        ]
-      }
+      { "stage": "detect", "surface": "packet capture", "data": "A fictional web server shows repeated administrator sign-in failures, a successful login, and an unexpected browser-update redirect. Treat these as clues to investigate, not proof of who caused them." },
+      { "stage": "investigate", "lab": "packet-lab and terminal-ops" },
+      { "stage": "respond", "choices": "case-recipe-redirect" },
+      { "stage": "debrief", "csfRooms": ["Identify", "Protect", "Detect", "Respond", "Recover"], "questions": {
+        "Identify": ["Which server, account, and visitors could be affected?", "What evidence would confirm the redirect's scope?"],
+        "Protect": ["Which access control or update process should protect the admin account?", "How could the server be hardened without disrupting unrelated services?"],
+        "Detect": ["Which packet or authentication clues connect the events?", "What additional telemetry would help identify other affected systems?"],
+        "Respond": ["How can the redirect be contained while preserving evidence?", "Who should approve changes to the public-facing service?"],
+        "Recover": ["How will the team verify a clean version before restoring service?", "What checks should confirm the redirect no longer occurs?"]
+      }},
+      { "stage": "report", "template": "evidence-summary-recommendation", "modelReport": "The training packet capture and server log show repeated administrator authentication failures, a later successful sign-in, and an unexpected browser-update redirect. These records support a possible unauthorized change; attribution is not established. The response team should preserve the relevant logs and capture, restrict the affected management path through the approved process, and restore a verified clean configuration after review." },
+      { "stage": "lessons", "question": "What preventive control would make unauthorized changes easier to prevent or detect?", "upgrades": ["require MFA for administrative access", "monitor configuration changes", "test restoration from a known-good baseline"] }
+    ]
+  },
+  {
+    "id": "case-phished-intern",
+    "title": "The Phished Intern",
+    "objectives": ["Security+ · social engineering", "Security+ · identity and access management", "Security+ · incident response"],
+    "stages": [
+      { "stage": "detect", "surface": "email and SIEM", "data": "An intern reports entering work credentials on a look-alike sign-in page. Fictional audit records show customer records were read, changed, and deleted afterward." },
+      { "stage": "investigate", "lab": "sql-detective and soc-shift" },
+      { "stage": "respond", "choices": "case-phished-intern" },
+      { "stage": "debrief", "csfRooms": ["Identify", "Protect", "Detect", "Respond", "Recover"], "questions": {
+        "Identify": ["Which account, data, and customers appear in the records?", "What is known, and what still needs verification?"],
+        "Protect": ["Which approved account protections could limit further access?", "How can the reporting process support the intern without blame?"],
+        "Detect": ["Which audit events show reads, changes, or deletions?", "What time range and related accounts should be checked?"],
+        "Respond": ["How should the team protect the account and preserve the audit trail?", "Who should decide whether affected customers must be notified?"],
+        "Recover": ["How can authorized recovery restore accurate records?", "What validation should happen before systems return to normal?"]
+      }},
+      { "stage": "report", "template": "evidence-summary-recommendation", "modelReport": "The fictional audit records show customer-record reads, changes, and deletions after the intern reported entering credentials on a look-alike sign-in page. The sequence is consistent with possible credential misuse, but the records do not establish attribution. The response team should preserve the audit data, follow the identity response plan, verify the affected records, and route any notification decision to the authorized privacy team." },
+      { "stage": "lessons", "question": "What safe reporting or account-control improvement would reduce the impact of a similar event?", "upgrades": ["make phishing reporting easy to find", "review MFA and session revocation coverage", "test customer-record recovery procedures"] }
+    ]
+  },
+  {
+    "id": "case-charging-phone",
+    "title": "The Charging Phone",
+    "objectives": ["Security+ · endpoint security", "A+ · mobile device security", "Security+ · incident response"],
+    "stages": [
+      { "stage": "detect", "surface": "workstation alert", "data": "An employee connects a personal phone to a work laptop to charge it. The fictional endpoint monitor raises an unknown-device alert; no malicious behavior has yet been confirmed." },
+      { "stage": "investigate", "lab": "found-device and powershell-ops" },
+      { "stage": "respond", "choices": "case-charging-phone" },
+      { "stage": "debrief", "csfRooms": ["Identify", "Protect", "Detect", "Respond", "Recover"], "questions": {
+        "Identify": ["Which laptop and connected device are involved?", "What business data or users could be affected?"],
+        "Protect": ["Which device-control policy applies to personal phones?", "How can charging be provided without enabling unapproved data access?"],
+        "Detect": ["What did the device alert actually observe?", "Which endpoint events would help distinguish charging from data transfer?"],
+        "Respond": ["How should the connection be handled under workplace policy?", "Which actions could preserve evidence and avoid unnecessary disruption?"],
+        "Recover": ["What checks are needed before the laptop is returned to normal use?", "What policy or user guidance should be clarified?"]
+      }},
+      { "stage": "report", "template": "evidence-summary-recommendation", "modelReport": "The endpoint monitor recorded an unknown personal phone connected to a work laptop. The alert establishes a device connection, not malware or data theft. The analyst should document the device and time, follow the organization's device-handling procedure, and ask endpoint support to review relevant telemetry before deciding whether further containment is needed." },
+      { "stage": "lessons", "question": "What policy or technical control would make safe charging behavior clear?", "upgrades": ["provide approved charge-only options", "publish a clear removable-device policy", "review endpoint device-control alerts"] }
+    ]
+  },
+  {
+    "id": "case-locked-files",
+    "title": "The Locked Files",
+    "objectives": ["Security+ · malware response", "Security+ · backup and recovery", "Security+ · incident response"],
+    "stages": [
+      { "stage": "detect", "surface": "file share and endpoint alert", "data": "Several employees can no longer open files on a team share, and one workstation displays a ransom note. The training alert suggests possible ransomware; the cause and scope remain unverified." },
+      { "stage": "investigate", "lab": "powershell-ops and soc-shift" },
+      { "stage": "respond", "choices": "case-locked-files" },
+      { "stage": "debrief", "csfRooms": ["Identify", "Protect", "Detect", "Respond", "Recover"], "questions": {
+        "Identify": ["Which hosts, shares, and users are affected?", "Which backups and recovery owners are relevant?"],
+        "Protect": ["Which access or backup safeguards could limit the impact?", "How can backup credentials be separated from routine accounts?"],
+        "Detect": ["Which endpoint or file-share records define the timeline?", "What signs would indicate continued spread?"],
+        "Respond": ["What approved containment action limits further impact?", "Which evidence must be preserved before remediation?"],
+        "Recover": ["How will the team verify a backup is clean and usable?", "Which checks should be complete before reconnecting systems?"]
+      }},
+      { "stage": "report", "template": "evidence-summary-recommendation", "modelReport": "Employees reported that team-share files could not be opened, and a workstation displayed a ransom note. The available training evidence supports a suspected ransomware incident but does not establish the entry method. The response team should follow its containment plan, preserve relevant evidence, and restore only from verified clean backups after validating the recovery environment." },
+      { "stage": "lessons", "question": "How can the organization prove that recovery copies are protected and usable?", "upgrades": ["run documented restore exercises", "protect backup credentials from normal user access", "record recovery time and data-loss objectives"] }
+    ]
+  },
+  {
+    "id": "case-leaky-share",
+    "title": "The Leaky Share",
+    "objectives": ["Security+ · access control", "Security+ · log analysis", "Security+ · incident response"],
+    "stages": [
+      { "stage": "detect", "surface": "SIEM and file-sharing audit", "data": "Fictional logs show an external administrator sign-in followed by a finance file copied to a public share. Confirm the account, approval, file, and sharing scope before concluding the access was unauthorized." },
+      { "stage": "investigate", "lab": "soc-shift and sql-detective" },
+      { "stage": "respond", "choices": "case-leaky-share" },
+      { "stage": "debrief", "csfRooms": ["Identify", "Protect", "Detect", "Respond", "Recover"], "questions": {
+        "Identify": ["Which administrator account, finance file, and recipients are involved?", "What does the audit record not tell you yet?"],
+        "Protect": ["Which least-privilege or sharing control should apply?", "How could approved external administration be separated from broad file access?"],
+        "Detect": ["Which timestamps connect the sign-in and file copy?", "What audit data can confirm who could access the public share?"],
+        "Respond": ["Which authorized step can restrict unintended sharing?", "How should the team preserve the file-sharing and sign-in records?"],
+        "Recover": ["How will the owner verify the correct file access is restored?", "What review is needed before closing the incident?"]
+      }},
+      { "stage": "report", "template": "evidence-summary-recommendation", "modelReport": "The fictional sign-in and file-sharing audit records show an external administrator login followed by a finance file copy to a public share. The sequence warrants investigation, but the records alone do not prove the activity was unauthorized or identify who viewed the file. The data owner and response lead should restrict public access through the approved process, preserve the audit trail, and verify the intended sharing permissions." },
+      { "stage": "lessons", "question": "Which least-privilege or monitoring change would help prevent or detect a public-share exposure?", "upgrades": ["review external administrator permissions", "alert on sensitive files shared publicly", "schedule recurring access reviews"] }
     ]
   }
 ]

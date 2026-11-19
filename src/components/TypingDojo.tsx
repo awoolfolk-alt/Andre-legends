@@ -1,15 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  CURRICULUM_CONTENT,
+  readReviewStore,
+  type ReviewStore,
+} from "@/game/data/content";
 
 type DojoMode = "acronym" | "ports" | "phrase";
 type Prompt = { question: string; answer: string };
-type Run = { wpm: number; accuracy: number; date: string };
+type Run = { wpm: number; accuracy: number; date: string; durationMs?: number };
 type DojoSave = {
   version: 1;
   runs: Run[];
   bestWpm: number;
   weakKeys: Record<string, number>;
+  bestReplay?: { answer: string; durationMs: number; wpm: number };
 };
 
 const STORAGE_KEY = "legend-typing-dojo-v1";
@@ -64,12 +70,20 @@ function isDojoSave(value: unknown): value is DojoSave {
         && typeof item.accuracy === "number"
         && item.accuracy >= 0
         && item.accuracy <= 1
-        && typeof item.date === "string";
+        && typeof item.date === "string"
+        && (item.durationMs === undefined || (typeof item.durationMs === "number" && Number.isFinite(item.durationMs) && item.durationMs >= 0));
     })
     && !!record.weakKeys
     && typeof record.weakKeys === "object"
     && Object.values(record.weakKeys).every((count) => (
       typeof count === "number" && Number.isInteger(count) && count >= 0
+    ))
+    && (record.bestReplay === undefined || (
+      typeof record.bestReplay === "object"
+      && record.bestReplay !== null
+      && typeof (record.bestReplay as Record<string, unknown>).answer === "string"
+      && typeof (record.bestReplay as Record<string, unknown>).durationMs === "number"
+      && typeof (record.bestReplay as Record<string, unknown>).wpm === "number"
     ));
 }
 
@@ -110,7 +124,7 @@ function measureRun(correctKeys: number, attemptedKeys: number, startedAt: numbe
   };
 }
 
-export default function TypingDojo() {
+export default function TypingDojo({ timersDisabled = false }: { timersDisabled?: boolean }) {
   const [mode, setMode] = useState<DojoMode>("acronym");
   const [saved, setSaved] = useState<DojoSave>(EMPTY_SAVE);
   const [prompt, setPrompt] = useState<Prompt>(() => PROMPTS.acronym[0]);
@@ -128,11 +142,14 @@ export default function TypingDojo() {
   const currentCombo = useRef(0);
   const promptSequence = useRef(0);
   const [loadError, setLoadError] = useState("");
+  const [ghostRace, setGhostRace] = useState(false);
+  const [review, setReview] = useState<ReviewStore | null>(null);
 
   useEffect(() => {
     const result = readSave();
     setSaved(result.save);
     setLoadError(result.error);
+    setReview(readReviewStore().store);
   }, []);
 
   const averageWpm = useMemo(() => {
@@ -142,6 +159,7 @@ export default function TypingDojo() {
   }, [saved.runs]);
 
   function resetRound(nextMode = mode) {
+    setGhostRace(false);
     const nextPrompt = choosePrompt(nextMode, saved.weakKeys);
     if (PROMPTS[nextMode].length > 1 && nextPrompt === prompt && promptSequence.current % 2 === 0) {
       const alternate = PROMPTS[nextMode].find((item) => item !== prompt);
@@ -172,13 +190,32 @@ export default function TypingDojo() {
     resetRound(nextMode);
   }
 
+  function startGhostRace() {
+    const replay = saved.bestReplay;
+    if (!replay) return;
+    setMode("phrase");
+    setGhostRace(true);
+    setPrompt({ question: "Race your own best run", answer: replay.answer });
+    setAnswer("");
+    setFeedback("");
+    setLiveStats(null);
+    setRunStats(null);
+    setCombo(0);
+    setRoundStartedAt(null);
+    setTimeLeft(null);
+    currentCombo.current = 0;
+    startedAt.current = null;
+    correctKeys.current = 0;
+    attemptedKeys.current = 0;
+  }
+
   function handleChange(value: string) {
     const appended = value.length > answer.length ? value.slice(answer.length) : "";
     if (appended) {
       if (startedAt.current === null) {
         startedAt.current = Date.now();
         setRoundStartedAt(startedAt.current);
-        setTimeLeft(timeLimitSeconds);
+        setTimeLeft(timersDisabled ? null : timeLimitSeconds);
       }
       const weakKeys = { ...saved.weakKeys };
       for (let index = 0; index < appended.length; index += 1) {
@@ -216,12 +253,16 @@ export default function TypingDojo() {
 
     const stats = measureRun(correctKeys.current, attemptedKeys.current, startedAt.current);
     const correct = answer.trim().toLowerCase() === prompt.answer.toLowerCase();
-    const run: Run = { wpm: stats.wpm, accuracy: stats.accuracy / 100, date: new Date().toISOString() };
+    const durationMs = Date.now() - startedAt.current;
+    const run: Run = { wpm: stats.wpm, accuracy: stats.accuracy / 100, date: new Date().toISOString(), durationMs };
     const nextRuns = [...saved.runs, run].slice(-MAX_SAVED_RUNS);
     const bestWpm = stats.accuracy >= MIN_ACCURACY_FOR_BEST
       ? Math.max(saved.bestWpm, stats.wpm)
       : saved.bestWpm;
-    const nextSave = { ...saved, runs: nextRuns, bestWpm };
+    const bestReplay = stats.accuracy >= MIN_ACCURACY_FOR_BEST && stats.wpm > saved.bestWpm
+      ? { answer: prompt.answer, durationMs, wpm: stats.wpm }
+      : saved.bestReplay;
+    const nextSave = { ...saved, runs: nextRuns, bestWpm, ...(bestReplay ? { bestReplay } : {}) };
 
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(nextSave));
@@ -243,19 +284,37 @@ export default function TypingDojo() {
   const targetWpm = averageWpm ? Math.max(1, Math.round(averageWpm * 1.05)) : 20;
   const timeLimitSeconds = Math.min(
     120,
-    Math.max(8, Math.ceil((prompt.answer.length / 5 / targetWpm) * 60 * 1.5)),
+    ghostRace && saved.bestReplay
+      ? Math.max(8, Math.ceil(saved.bestReplay.durationMs / 1000))
+      : Math.max(8, Math.ceil((prompt.answer.length / 5 / targetWpm) * 60 * 1.5)),
   );
+  const domainAccuracy = (["hardware", "network", "security"] as const).map((district) => {
+    const cards = CURRICULUM_CONTENT.cards.filter((card) => card.district === district);
+    const progress = cards.flatMap((card) => {
+      const state = review?.cards[card.id];
+      return state ? [state] : [];
+    });
+    const attempts = progress.reduce((sum, state) => sum + state.attempts, 0);
+    const correct = progress.reduce((sum, state) => sum + state.correct, 0);
+    return { district, attempts, accuracy: attempts ? Math.round(correct / attempts * 100) : null };
+  });
+  const wpmTrend = saved.runs.slice(-5);
+  const runElapsed = roundStartedAt === null ? 0 : Date.now() - roundStartedAt;
+  const ghostProgress = saved.bestReplay
+    ? Math.min(100, Math.round(runElapsed / saved.bestReplay.durationMs * 100))
+    : 0;
+  const playerProgress = Math.min(100, Math.round(answer.length / Math.max(prompt.answer.length, 1) * 100));
   submitRound.current = submitAnswer;
 
   useEffect(() => {
-    if (roundStartedAt === null || runStats) return;
+    if (timersDisabled || roundStartedAt === null || runStats) return;
     const timer = window.setInterval(() => {
       const remaining = Math.max(0, timeLimitSeconds - Math.floor((Date.now() - roundStartedAt) / 1000));
       setTimeLeft(remaining);
       if (remaining === 0) submitRound.current();
     }, 250);
     return () => window.clearInterval(timer);
-  }, [roundStartedAt, runStats, timeLimitSeconds]);
+  }, [roundStartedAt, runStats, timeLimitSeconds, timersDisabled]);
 
   return (
     <section className="rounded border border-[#526a59] bg-[#19251f] p-4 sm:p-6">
@@ -290,11 +349,22 @@ export default function TypingDojo() {
             {MODE_LABELS[item]}
           </button>
         ))}
+        <button type="button" onClick={startGhostRace} disabled={!saved.bestReplay} className="min-h-10 rounded border border-[#526a59] px-3 py-2 font-mono text-xs disabled:opacity-40">
+          Race my best
+        </button>
       </div>
 
       <div className="mt-4 rounded border border-[#405148] bg-[#101815] p-4">
         <p className="font-mono text-xs text-[#9bc5a8]">{MODE_LABELS[mode].toUpperCase()}</p>
         <h3 className="mt-2 text-lg font-semibold text-white">{prompt.question}</h3>
+        {ghostRace && saved.bestReplay && (
+          <div className="mt-3 space-y-2" aria-label="Ghost race progress">
+            <div className="flex items-center justify-between text-xs"><span>YOU</span><span>{playerProgress}%</span></div>
+            <div className="h-2 overflow-hidden rounded bg-[#27352c]"><div className="h-full bg-[#9bc5a8]" style={{ width: `${playerProgress}%` }} /></div>
+            <div className="flex items-center justify-between text-xs"><span>YOUR BEST GHOST</span><span>{ghostProgress}%</span></div>
+            <div className="h-2 overflow-hidden rounded bg-[#27352c]"><div className="h-full bg-[#e7d8ac]" style={{ width: `${ghostProgress}%` }} /></div>
+          </div>
+        )}
         <label className="mt-4 block text-xs text-[#c5cebf]" htmlFor="typing-dojo-answer">Your answer</label>
         <input
           id="typing-dojo-answer"
@@ -312,7 +382,7 @@ export default function TypingDojo() {
           className="mt-1 min-h-12 w-full rounded border border-[#526a59] bg-[#0a110e] px-3 font-mono text-sm text-white outline-none focus:border-[#c6d9a5] disabled:opacity-70"
         />
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <p className="font-mono text-xs text-[#aeb7a7]">WPM · {runStats?.wpm ?? liveStats?.wpm ?? "—"} <span className="mx-2">|</span> STREAK · {combo} <span className="mx-2">|</span> ACCURACY · {accuracyLabel} <span className="mx-2">|</span> TIME · {timeLeft === null ? `${timeLimitSeconds}s` : `${timeLeft}s`}</p>
+          <p className="font-mono text-xs text-[#aeb7a7]">WPM · {runStats?.wpm ?? liveStats?.wpm ?? "—"} <span className="mx-2">|</span> STREAK · {combo} <span className="mx-2">|</span> ACCURACY · {accuracyLabel} <span className="mx-2">|</span> {timersDisabled ? "UNTIMED PRACTICE" : `TIME · ${timeLeft === null ? `${timeLimitSeconds}s` : `${timeLeft}s`}`}</p>
           <button
             type="button"
             onClick={submitAnswer}
@@ -326,10 +396,42 @@ export default function TypingDojo() {
           <p className="mt-2 font-mono text-xs text-[#a9c8b0]">
             {runStats.wpm} WPM · {Math.round(runStats.accuracy * 100)}% accuracy
             {runStats.accuracy * 100 < MIN_ACCURACY_FOR_BEST ? " · 90% accuracy is needed for a new best." : ""}
+            {ghostRace && saved.bestReplay && runStats.durationMs !== undefined
+              ? ` · ${runStats.durationMs <= saved.bestReplay.durationMs ? "Beat your ghost!" : `Ghost finished ${Math.ceil((runStats.durationMs - saved.bestReplay.durationMs) / 1000)}s ahead.`}`
+              : ""}
           </p>
         )}
         {loadError && <p role="status" className="mt-2 text-xs text-amber-200">{loadError}</p>}
       </div>
+      <section className="rounded border border-[#405148] bg-[#101815] p-4" aria-labelledby="typing-dashboard-title">
+        <h3 id="typing-dashboard-title" className="font-mono text-xs tracking-widest text-[#e7d8ac]">LEARNING DASHBOARD</h3>
+        <p className="mt-1 text-xs text-[#aeb7a7]">Recent typing speed and quiz accuracy are stored locally in this browser.</p>
+        <div className="mt-4 grid gap-5 md:grid-cols-2">
+          <div>
+            <p className="text-xs text-[#c5cebf]">WPM trend · last 5 runs</p>
+            {wpmTrend.length ? (
+              <div className="mt-2 flex h-28 items-end gap-2" aria-label="Recent words-per-minute trend">
+                {wpmTrend.map((run, index) => {
+                  const height = Math.max(8, Math.round(run.wpm / Math.max(...wpmTrend.map((item) => item.wpm), 1) * 100));
+                  return <div key={`${run.date}-${index}`} className="flex flex-1 flex-col items-center justify-end gap-1">
+                    <span className="text-[10px]">{run.wpm}</span>
+                    <div className="w-full rounded-t bg-[#829b71]" style={{ height: `${height}%` }} aria-label={`${run.wpm} WPM`} />
+                  </div>;
+                })}
+              </div>
+            ) : <p className="mt-2 text-xs text-[#aeb7a7]">Complete a typing round to start the trend.</p>}
+          </div>
+          <div>
+            <p className="text-xs text-[#c5cebf]">Quiz accuracy by exam district</p>
+            <dl className="mt-2 space-y-2">
+              {domainAccuracy.map((item) => <div key={item.district} className="flex justify-between gap-3 text-xs">
+                <dt className="capitalize">{item.district}</dt>
+                <dd>{item.accuracy === null ? "No quiz answers yet" : `${item.accuracy}% · ${item.attempts} attempts`}</dd>
+              </div>)}
+            </dl>
+          </div>
+        </div>
+      </section>
     </section>
   );
 }

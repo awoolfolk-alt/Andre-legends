@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { CURRICULUM_CONTENT, interactionForFormat, scoreQuizResponse, type Card } from "@/game/data/content";
+import { buildExamDeck, CURRICULUM_CONTENT, interactionForFormat, scoreQuizResponse, type Card } from "@/game/data/content";
 import {
   dueCardIds,
   readReviewStore,
@@ -13,7 +13,8 @@ import {
   type ReviewStore,
 } from "@/game/data/content/review";
 
-type QuizMode = "all" | "due";
+type QuizMode = "all" | "due" | "exam";
+type ExamAnswer = { district: Card["district"]; objective: string; correct: boolean };
 
 function shuffle<T>(items: T[]): T[] {
   const result = [...items];
@@ -72,6 +73,7 @@ export default function CyberPrepQuiz({ cardIds }: { cardIds?: string[] }) {
     return CURRICULUM_CONTENT.cards.filter((card) => filter.has(card.id));
   }, [cardIds]);
   const [mode, setMode] = useState<QuizMode>("all");
+  const examDeck = useMemo(() => buildExamDeck(CURRICULUM_CONTENT.cards, CURRICULUM_CONTENT.scenarios), []);
   const [review, setReview] = useState<ReviewStore>({ version: 1, cards: {} });
   const [storageError, setStorageError] = useState("");
   const [roundIds, setRoundIds] = useState(() => shuffle(availableCards.map((card) => card.id)));
@@ -82,6 +84,8 @@ export default function CyberPrepQuiz({ cardIds }: { cardIds?: string[] }) {
   const [result, setResult] = useState<boolean | null>(null);
   const [score, setScore] = useState(0);
   const [answered, setAnswered] = useState(0);
+  const [examAnswers, setExamAnswers] = useState<ExamAnswer[]>([]);
+  const [examComplete, setExamComplete] = useState(false);
 
   useEffect(() => {
     const loaded = readReviewStore();
@@ -89,7 +93,7 @@ export default function CyberPrepQuiz({ cardIds }: { cardIds?: string[] }) {
     setStorageError(loaded.error);
   }, []);
 
-  const cardsById = useMemo(() => new Map(CURRICULUM_CONTENT.cards.map((card) => [card.id, card])), []);
+  const cardsById = useMemo(() => new Map([...CURRICULUM_CONTENT.cards, ...examDeck].map((item) => [item.id, item])), [examDeck]);
   const card = cardsById.get(roundIds[index]) ?? CURRICULUM_CONTENT.cards[0];
   const dueIds = dueCardIds(review);
   const weakIds = weakCardIds(review);
@@ -106,10 +110,14 @@ export default function CyberPrepQuiz({ cardIds }: { cardIds?: string[] }) {
   function start(nextMode: QuizMode) {
     setMode(nextMode);
     const due = new Set(dueCardIds(review));
+    const sourceCards = nextMode === "exam" ? examDeck
+      : nextMode === "due"
+        ? Array.from(new Map([...availableCards, ...examDeck].map((item) => [item.id, item])).values())
+        : availableCards;
     const ids = nextMode === "due"
-      ? availableCards.filter((item) => due.has(item.id)).map((item) => item.id)
-      : availableCards.map((item) => item.id);
-    setRoundIds(shuffle(ids));
+      ? sourceCards.filter((item) => due.has(item.id)).map((item) => item.id)
+      : sourceCards.map((item) => item.id);
+    setRoundIds(shuffle(ids).slice(0, nextMode === "exam" ? 90 : undefined));
     setIndex(0);
     setSelected([]);
     setTyped("");
@@ -117,6 +125,8 @@ export default function CyberPrepQuiz({ cardIds }: { cardIds?: string[] }) {
     setResult(null);
     setScore(0);
     setAnswered(0);
+    setExamAnswers([]);
+    setExamComplete(false);
   }
 
   function submit() {
@@ -136,11 +146,18 @@ export default function CyberPrepQuiz({ cardIds }: { cardIds?: string[] }) {
     setResult(correct);
     setScore((current) => current + points);
     setAnswered((current) => current + 1);
+    if (mode === "exam") {
+      setExamAnswers((current) => [...current, { district: card.district, objective: card.objective, correct }]);
+    }
   }
 
   function next() {
     const nextIndex = index + 1;
     if (nextIndex >= roundIds.length) {
+      if (mode === "exam") {
+        setExamComplete(true);
+        return;
+      }
       start(mode);
       return;
     }
@@ -168,6 +185,11 @@ export default function CyberPrepQuiz({ cardIds }: { cardIds?: string[] }) {
   }
 
   const clueHighlighted = highlightClues(card.prompt, card.clueWords);
+  const examDomainResults = (["hardware", "network", "security"] as const).map((district) => {
+    const domainAnswers = examAnswers.filter((answer) => answer.district === district);
+    const correct = domainAnswers.filter((answer) => answer.correct).length;
+    return { district, correct, total: domainAnswers.length, accuracy: domainAnswers.length ? Math.round((correct / domainAnswers.length) * 100) : 0 };
+  });
 
   if (!roundIds.length) {
     return (
@@ -179,23 +201,52 @@ export default function CyberPrepQuiz({ cardIds }: { cardIds?: string[] }) {
     );
   }
 
+  if (examComplete) {
+    const percentage = answered ? Math.round((score / answered) * 100) : 0;
+    const objectiveResults = Array.from(new Set(examAnswers.map((answer) => answer.objective))).map((objective) => {
+      const objectiveAnswers = examAnswers.filter((answer) => answer.objective === objective);
+      const correct = objectiveAnswers.filter((answer) => answer.correct).length;
+      return { objective, correct, total: objectiveAnswers.length, accuracy: Math.round((correct / objectiveAnswers.length) * 100) };
+    });
+    return (
+      <section className="space-y-4 rounded border border-[#526a59] bg-[#19251f] p-4 sm:p-6">
+        <p className="font-mono text-[10px] tracking-[0.2em] text-[#9bc5a8]">UNTIMED EXAM REPORT</p>
+        <h2 className="text-xl font-bold text-[#f2e5b9]">90-question practice complete</h2>
+        <p className="text-sm text-[#dbe1d4]">Score: {score.toFixed(2)} / {answered} · {percentage}%. Target for this practice report: 85%.</p>
+        <div className="grid gap-3 sm:grid-cols-3">{examDomainResults.map((item) => <div key={item.district} className="rounded border border-[#405148] p-3">
+          <p className="font-mono text-xs text-[#c6d9a5]">{item.district.toUpperCase()}</p>
+          <p className="mt-1 text-sm text-white">{item.total ? `${item.accuracy}% · ${item.correct}/${item.total}` : "No questions"}</p>
+        </div>)}</div>
+        <div className="space-y-2"><h3 className="font-mono text-xs text-[#c6d9a5]">BY OBJECTIVE</h3>
+          {objectiveResults.map((item) => <p key={item.objective} className="rounded border border-[#405148] p-2 text-xs text-[#dbe1d4]">{item.objective} · {item.accuracy}% ({item.correct}/{item.total})</p>)}
+        </div>
+        <p className="text-xs text-[#aeb7a7]">Review missed topics before trying again. All questions are original or fictional training examples; this is not an official certification exam.</p>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => start("exam")} className="min-h-10 rounded border border-[#c6d9a5] px-3 text-xs">Start another untimed exam</button>
+          <button type="button" onClick={() => start("all")} className="min-h-10 rounded border border-[#526a59] px-3 text-xs">Review the full deck</button>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <section className="rounded border border-[#526a59] bg-[#19251f] p-4 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="font-mono text-[10px] tracking-[0.2em] text-[#9bc5a8]">CHECKPOINT QUIZ · {availableCards.length} ORIGINAL QUESTIONS</p>
-            <h2 className="mt-2 text-xl font-bold text-[#f2e5b9]">Quiz & spaced review</h2>
-            <p className="mt-1 text-sm text-[#c5cebf]">Question formats F1–F20; answers, explanations, and references are shown after each response.</p>
+            <p className="font-mono text-[10px] tracking-[0.2em] text-[#9bc5a8]">{mode === "exam" ? "UNTIMED EXAM SIMULATOR · 90 QUESTIONS" : `CHECKPOINT QUIZ · ${availableCards.length} ORIGINAL QUESTIONS`}</p>
+            <h2 className="mt-2 text-xl font-bold text-[#f2e5b9]">{mode === "exam" ? "Security+ Practice Exam" : "Quiz & spaced review"}</h2>
+            <p className="mt-1 text-sm text-[#c5cebf]">{mode === "exam" ? "Work through 90 unique questions at your own pace. Answers are recorded without revealing the score until the report." : "Question formats F1–F20; answers, explanations, and references are shown after each response."}</p>
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={() => start("all")} className={`min-h-10 rounded border px-3 py-2 text-xs ${!reviewMode ? "border-[#c6d9a5] bg-[#344c3b] text-white" : "border-[#405148] text-[#c5cebf]"}`}>Full deck</button>
+            <button type="button" onClick={() => start("all")} className={`min-h-10 rounded border px-3 py-2 text-xs ${mode === "all" ? "border-[#c6d9a5] bg-[#344c3b] text-white" : "border-[#405148] text-[#c5cebf]"}`}>Full deck</button>
             <button type="button" onClick={() => start("due")} className={`min-h-10 rounded border px-3 py-2 text-xs ${reviewMode ? "border-[#c6d9a5] bg-[#344c3b] text-white" : "border-[#405148] text-[#c5cebf]"}`}>Review due · {dueIds.length}</button>
+            <button type="button" onClick={() => start("exam")} className={`min-h-10 rounded border px-3 py-2 text-xs ${mode === "exam" ? "border-[#c6d9a5] bg-[#344c3b] text-white" : "border-[#405148] text-[#c5cebf]"}`}>90-question exam · untimed</button>
           </div>
         </div>
         <div className="mt-4 grid gap-2 sm:grid-cols-3">
           <div className="rounded border border-[#405148] bg-[#101815] p-3"><p className="font-mono text-[10px] text-[#9bc5a8]">ROUND</p><p className="mt-1 text-sm text-white">{Math.min(index + 1, roundIds.length)} / {roundIds.length}</p></div>
-          <div className="rounded border border-[#405148] bg-[#101815] p-3"><p className="font-mono text-[10px] text-[#9bc5a8]">POINTS</p><p className="mt-1 text-sm text-white">{score.toFixed(2)} / {answered}</p></div>
+          <div className="rounded border border-[#405148] bg-[#101815] p-3"><p className="font-mono text-[10px] text-[#9bc5a8]">{mode === "exam" ? "EXAM SCORE" : "POINTS"}</p><p className="mt-1 text-sm text-white">{mode === "exam" ? "Hidden until report" : `${score.toFixed(2)} / ${answered}`}</p></div>
           <div className="rounded border border-[#405148] bg-[#101815] p-3"><p className="font-mono text-[10px] text-[#9bc5a8]">WEAK CARDS</p><p className="mt-1 text-sm text-white">{weakIds.length} · missed twice or more</p></div>
         </div>
         {storageError && <p role="status" className="mt-3 text-xs text-amber-200">{storageError}</p>}
@@ -203,7 +254,7 @@ export default function CyberPrepQuiz({ cardIds }: { cardIds?: string[] }) {
 
       <section className="rounded border border-[#526a59] bg-[#19251f] p-4 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2 font-mono text-[10px] text-[#9bc5a8]">
-          <span>{card.format} · {card.district.toUpperCase()} · DIFFICULTY {card.difficulty}</span>
+          <span>{mode === "exam" ? `EXAM QUESTION ${index + 1} / ${roundIds.length}` : `${card.format} · ${card.district.toUpperCase()} · DIFFICULTY ${card.difficulty}`}</span>
           <span>{card.objective}</span>
         </div>
         <h3 className="mt-4 whitespace-pre-line text-lg font-semibold leading-7 text-white">{clueHighlighted}</h3>
@@ -250,13 +301,15 @@ export default function CyberPrepQuiz({ cardIds }: { cardIds?: string[] }) {
         {isMulti && <p className="mt-2 text-xs text-[#aeb7a7]">{card.selectCount ? `Select exactly ${card.selectCount}.` : "Select every correct option; wrong selections reduce credit."}</p>}
         {result === null ? (
           <button type="button" onClick={submit} disabled={(isTyped && !typed.trim()) || (isMulti && !selected.length) || (isOrdering && !ordered.length) || (!isTyped && !isMulti && !isOrdering && !selected.length)}
-            className="mt-5 min-h-11 rounded border border-[#a7c597]/60 bg-[#283b2f] px-5 py-2 font-mono text-xs font-bold text-[#d8efcb] disabled:opacity-40">Submit answer</button>
+          className="mt-5 min-h-11 rounded border border-[#a7c597]/60 bg-[#283b2f] px-5 py-2 font-mono text-xs font-bold text-[#d8efcb] disabled:opacity-40">{mode === "exam" ? "Record answer" : "Submit answer"}</button>
         ) : (
           <>
-            <Feedback card={card} isCorrect={result} />
-            <button type="button" onClick={next} className="mt-4 min-h-11 rounded border border-[#a7c597]/60 bg-[#283b2f] px-5 py-2 font-mono text-xs font-bold text-[#d8efcb]">
-              {index + 1 === roundIds.length ? "Finish round" : "Next question"}
-            </button>
+          {mode === "exam"
+            ? <p className="mt-4 rounded border border-[#405148] bg-[#101815] p-3 text-sm text-[#dbe1d4]" role="status">Answer recorded. The exam score and explanations will appear in the report after the last question.</p>
+            : <Feedback card={card} isCorrect={result} />}
+          <button type="button" onClick={next} className="mt-4 min-h-11 rounded border border-[#a7c597]/60 bg-[#283b2f] px-5 py-2 font-mono text-xs font-bold text-[#d8efcb]">
+            {index + 1 === roundIds.length ? mode === "exam" ? "Finish exam and view report" : "Finish round" : "Next question"}
+          </button>
           </>
         )}
       </section>

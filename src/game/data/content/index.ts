@@ -65,6 +65,17 @@ export {
 } from "./review";
 export type { ReviewState, ReviewStore } from "./review";
 export { interactionForFormat, scoreQuizResponse } from "./quiz";
+export { buildExamDeck } from "./exam";
 export type { QuizResponse, QuizResult } from "./quiz";
 export { createTerminalSession, executeTerminalCommand, tokenize } from "./terminal";
 export type { TerminalResult, TerminalSession, VirtualNode } from "./terminal";
+export { PHISH_MESSAGES } from "./phish";
+export type { PhishChannel, PhishMessage } from "./phish";
+export { createPowerShellSession, executePowerShell } from "./powershell";
+export type { PowerShellRecord, PowerShellSession } from "./powershell";
+export { createSqlTrainingDatabase, executeReadOnlySql, runParameterizedLogin } from "./sql";
+export type { SqlQueryResult } from "./sql";
+export { compileCaptureFilter, compileDisplayFilter, TRAINING_CAPTURE } from "./packet";
+export type { TrainingPacket } from "./packet";
+export { searchSIEM, SIEM_ALERTS, SIEM_LOGS } from "./siem";
+export type { SIEMAlert, SIEMLog, SIEMSearchResult } from "./siem";

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { CURRICULUM_CONTENT } from "./index";
 import { loadContentList } from "./load";
-import { CardSchema } from "./schemas";
+import { buildExamDeck } from "./exam";
+import { CardSchema, IncidentCaseSchema } from "./schemas";
 import { dueCardIds, emptyReviewStore, recordCardAnswer, weakCardIds } from "./review";
 import { interactionForFormat, scoreQuizResponse } from "./quiz";
 
@@ -11,15 +12,61 @@ describe("CyberPrep curriculum content", () => {
     expect(CURRICULUM_CONTENT.briefs).toHaveLength(1);
     expect(CURRICULUM_CONTENT.cards.length).toBeGreaterThanOrEqual(20);
     expect(Array.from({ length: 20 }, (_, index) => `F${index + 1}`).every((format) => formats.has(format))).toBe(true);
-    expect(CURRICULUM_CONTENT.scenarios).toHaveLength(1);
+    expect(CURRICULUM_CONTENT.scenarios).toHaveLength(10);
+    for (const scenario of CURRICULUM_CONTENT.scenarios) {
+      expect(scenario.actions.map((action) => action.rating)).toEqual(expect.arrayContaining(["best", "acceptable", "risky"]));
+    }
     expect(CURRICULUM_CONTENT.labs).toHaveLength(1);
-    expect(CURRICULUM_CONTENT.cases).toHaveLength(1);
+    expect(CURRICULUM_CONTENT.cases).toHaveLength(5);
+    expect(CURRICULUM_CONTENT.cases.map((incidentCase) => incidentCase.title)).toEqual([
+      "The Recipe Redirect",
+      "The Phished Intern",
+      "The Charging Phone",
+      "The Locked Files",
+      "The Leaky Share",
+    ]);
+    for (const incidentCase of CURRICULUM_CONTENT.cases) {
+      expect(incidentCase.stages.map((stage) => stage.stage)).toEqual([
+        "detect",
+        "investigate",
+        "respond",
+        "debrief",
+        "report",
+        "lessons",
+      ]);
+      const debrief = incidentCase.stages.find((stage) => stage.stage === "debrief");
+      expect(debrief?.stage).toBe("debrief");
+      if (debrief?.stage === "debrief") {
+        for (const room of debrief.csfRooms) {
+          expect(debrief.questions[room]).toHaveLength(2);
+        }
+      }
+    }
   });
 
   it("rejects duplicate IDs and malformed cards with actionable validation errors", () => {
     const card = CURRICULUM_CONTENT.cards[0];
     expect(() => loadContentList(CardSchema, [card, card], "test.json")).toThrow(/Duplicate id/);
     expect(CardSchema.safeParse({ ...card, format: "bad" }).success).toBe(false);
+  });
+
+  it("rejects incident cases with a missing or duplicated response stage", () => {
+    const incidentCase = CURRICULUM_CONTENT.cases[0];
+    expect(IncidentCaseSchema.safeParse({
+      ...incidentCase,
+      stages: incidentCase.stages.filter((stage) => stage.stage !== "respond"),
+    }).success).toBe(false);
+    expect(IncidentCaseSchema.safeParse({
+      ...incidentCase,
+      stages: [...incidentCase.stages, incidentCase.stages[0]],
+    }).success).toBe(false);
+  });
+
+  it("builds a 90-question exam pool from unique original and simulated content", () => {
+    const examDeck = buildExamDeck(CURRICULUM_CONTENT.cards, CURRICULUM_CONTENT.scenarios);
+    expect(examDeck.length).toBeGreaterThanOrEqual(90);
+    expect(new Set(examDeck.map((card) => card.id)).size).toBe(examDeck.length);
+    expect(examDeck.every((card) => card.answer.length > 0 && card.explanation.length > 0)).toBe(true);
   });
 });
 

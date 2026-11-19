@@ -38,5 +38,131 @@
       "Google Cybersecurity Certificate · Assets, Threats, and Vulnerabilities",
       "Security+ · Security operations"
     ]
+  },
+  {
+    "id": "S2",
+    "title": "USB labeled Payroll on your desk",
+    "surface": "physical office",
+    "setting": "analyst workstation",
+    "story": "A small drive labeled Payroll 2026 is left beside your keyboard. Nobody on your team mentioned sharing files.",
+    "actions": [
+      { "text": "Plug it in because the label looks important", "rating": "risky", "feedback": "A convincing label is part of the lure. Unknown removable media can deliver malware or attack the computer directly." },
+      { "text": "Put it in a drawer and tell your manager later", "rating": "acceptable", "feedback": "You did not connect it, which avoids the immediate device risk. Report it promptly so security can follow the media procedure." },
+      { "text": "Leave it disconnected and report its location to IT/security", "rating": "best", "feedback": "Do not inspect unknown media yourself. Let the designated team handle and document it." }
+    ],
+    "typeAnswers": { "attack": ["usb baiting", "baiting", "removable media attack"], "redFlags": ["unknown device", "unexpected usb", "tempting label"] },
+    "objectives": ["Security+ · physical security", "Google Cybersecurity Certificate · assets and threats"]
+  },
+  {
+    "id": "S3",
+    "title": "Unknown phone charging at a workstation",
+    "surface": "physical office",
+    "setting": "shared analyst desk",
+    "story": "A phone you do not recognize is connected to a work laptop. A device warning appeared, and the laptop is still running.",
+    "actions": [
+      { "text": "Unlock the phone to find its owner", "rating": "risky", "feedback": "Do not explore an unknown device or dismiss the warning. That could change evidence or expose the workstation." },
+      { "text": "Stop using the laptop and notify the nearby IT desk", "rating": "acceptable", "feedback": "Stopping work and alerting IT is safer than continuing. Follow their isolation instructions." },
+      { "text": "Do not interact with the phone; isolate the laptop using policy and contact the security team", "rating": "best", "feedback": "Contain the possible connection without investigating the phone. Preserve the device state and let responders collect evidence." }
+    ],
+    "typeAnswers": { "attack": ["unknown device", "malicious usb", "device injection"], "redFlags": ["unrecognized device", "security warning", "unexpected connection"] },
+    "objectives": ["Security+ · incident response", "A+ · device safety"]
+  },
+  {
+    "id": "S4",
+    "title": "The sick computer",
+    "surface": "office workstation",
+    "setting": "finance office",
+    "story": "A workstation is unusually slow, its fan is loud, and unfamiliar pop-ups appeared. A monitoring alert reports one process using 95% CPU.",
+    "actions": [
+      { "text": "Install a cleaner from the pop-up and keep working", "rating": "risky", "feedback": "The pop-up may be part of the problem. Installing an unapproved tool can add malware and destroy useful evidence." },
+      { "text": "Save a note about the symptoms and ask the help desk what to do", "rating": "acceptable", "feedback": "Reporting symptoms is good. Do not keep using the device if policy says to isolate it." },
+      { "text": "Stop using it, isolate it according to policy, and report the process alert to the SOC", "rating": "best", "feedback": "Contain the possible compromise and preserve evidence. Responders can investigate the process safely." }
+    ],
+    "typeAnswers": { "attack": ["cryptojacking", "malware", "suspicious process"], "redFlags": ["high cpu", "unexpected popups", "slow computer"] },
+    "objectives": ["Security+ · malware response", "A+ · troubleshooting"]
+  },
+  {
+    "id": "S5",
+    "title": "Ransomware note",
+    "surface": "office workstation",
+    "setting": "records office",
+    "story": "Files will not open. A note demands payment and gives a deadline. The computer is still connected to the office network.",
+    "actions": [
+      { "text": "Pay immediately and delete the note", "rating": "risky", "feedback": "Payment does not guarantee recovery and deleting the note removes evidence. Follow the incident plan." },
+      { "text": "Take a photo of the note and contact the help desk", "rating": "acceptable", "feedback": "Reporting and preserving details is helpful. Avoid continuing to use or connect the affected device." },
+      { "text": "Isolate the device per policy, preserve the note, and contact the incident-response team", "rating": "best", "feedback": "Contain possible spread and preserve evidence. Responders can determine recovery from verified clean backups; do not make payment decisions yourself." }
+    ],
+    "typeAnswers": { "attack": ["ransomware", "malware"], "redFlags": ["files encrypted", "payment demand", "deadline"] },
+    "objectives": ["Security+ · incident response", "Google Cybersecurity Certificate · threats and response"]
+  },
+  {
+    "id": "S6",
+    "title": "Someone follows you through the badge door",
+    "surface": "physical office",
+    "setting": "secure entrance",
+    "story": "A person carrying boxes walks close behind you as you badge into a restricted office. They say their hands are full and ask you to hold the door.",
+    "actions": [
+      { "text": "Hold the secure door open because they look busy", "rating": "risky", "feedback": "A friendly story does not verify authorization. Letting someone bypass the badge check is tailgating." },
+      { "text": "Ask them to use their badge and point them to reception", "rating": "acceptable", "feedback": "You avoided granting access. Follow the site's procedure if they refuse or the situation feels unsafe." },
+      { "text": "Do not let them follow you in; use the visitor process and notify security", "rating": "best", "feedback": "Each person should authenticate at the controlled entry. The visitor process verifies identity and authorization." }
+    ],
+    "typeAnswers": { "attack": ["tailgating", "piggybacking", "physical social engineering"], "redFlags": ["unverified person", "bypassing badge", "restricted entrance"] },
+    "objectives": ["Security+ · physical security", "Security operations"]
+  },
+  {
+    "id": "S7",
+    "title": "Lost work laptop",
+    "surface": "public transit",
+    "setting": "train station",
+    "story": "You notice your assigned laptop is missing after leaving the train. It may contain work data, and you are not sure whether full-disk encryption was enabled.",
+    "actions": [
+      { "text": "Wait a few days in case someone returns it", "rating": "risky", "feedback": "Delay can give another person time to access data. Report loss promptly so the organization can protect accounts and data." },
+      { "text": "Call your manager and ask whether to report it", "rating": "acceptable", "feedback": "Tell your manager, but use the formal lost-device/security reporting process right away as well." },
+      { "text": "Report it immediately through the approved channel and follow the remote lock/wipe process", "rating": "best", "feedback": "Fast reporting lets the organization revoke sessions, locate or lock the device, and determine whether a remote wipe is appropriate." }
+    ],
+    "typeAnswers": { "attack": ["lost device", "physical exposure", "data exposure"], "redFlags": ["missing laptop", "work data", "encryption unknown"] },
+    "objectives": ["Security+ · asset protection", "A+ · mobile device security"]
+  },
+  {
+    "id": "S8",
+    "title": "Shoulder surfer on the train",
+    "surface": "public transit",
+    "setting": "commute",
+    "story": "A passenger repeatedly watches your screen while you enter a work password on your laptop. You have not seen them touch the device.",
+    "actions": [
+      { "text": "Confront them and show the password field", "rating": "risky", "feedback": "Do not reveal more information or escalate the situation. Protect the screen and follow workplace reporting guidance." },
+      { "text": "Turn away from the screen and finish later in a private place", "rating": "acceptable", "feedback": "Stopping the exposure is sensible. Lock the screen before moving and report the observation if your policy requires it." },
+      { "text": "Stop typing, lock the device, shield the screen, and change the credential if it may have been seen", "rating": "best", "feedback": "Reduce visual exposure, protect the session, and use the approved password process if you think the credential was observed." }
+    ],
+    "typeAnswers": { "attack": ["shoulder surfing", "visual hacking", "observation"], "redFlags": ["watching the screen", "password exposure", "public place"] },
+    "objectives": ["Security+ · physical security", "Google Cybersecurity Certificate · protect data"]
+  },
+  {
+    "id": "S9",
+    "title": "Fake browser update",
+    "surface": "web browsing",
+    "setting": "shared workstation",
+    "story": "A full-screen page claims your browser is out of date and offers a download button. The warning appeared on a recipe site and is not part of the browser settings.",
+    "actions": [
+      { "text": "Download and run the update from the pop-up", "rating": "risky", "feedback": "The page may deliver unwanted software. Update through the browser's built-in settings or approved software portal." },
+      { "text": "Close the tab and ask IT if the alert returns", "rating": "acceptable", "feedback": "Closing the page avoids the download. Report repeated or unusual alerts under your organization's process." },
+      { "text": "Do not click the pop-up; close the page and check updates through the known browser settings", "rating": "best", "feedback": "A webpage cannot prove it is a genuine updater. Use the application's own trusted update path." }
+    ],
+    "typeAnswers": { "attack": ["malvertising", "fake update", "trojan"], "redFlags": ["unexpected download", "urgent update", "untrusted page"] },
+    "objectives": ["Security+ · malware", "Google Cybersecurity Certificate · threats"]
+  },
+  {
+    "id": "S10",
+    "title": "Malware behavior lab",
+    "surface": "simulated security console",
+    "setting": "training room",
+    "story": "A fictional endpoint report says a file disguised as a free utility encrypts documents and asks for money. The report is a training sample, not a real alert.",
+    "actions": [
+      { "text": "Classify the behavior as ransomware and follow the approved containment and recovery plan", "rating": "best", "feedback": "Ransomware encrypts or blocks access to data to demand payment. Contain, preserve evidence, and recover from clean backups under the incident plan." },
+      { "text": "Classify it as spyware and delete the sample", "rating": "acceptable", "feedback": "You recognized malware, but the behavior described is specifically ransomware. Do not delete evidence outside the response process." },
+      { "text": "Run the sample on a work laptop to see what it does", "rating": "risky", "feedback": "Never execute an unknown sample on a normal workstation. Use an isolated, authorized malware-analysis environment." }
+    ],
+    "typeAnswers": { "attack": ["ransomware", "trojan"], "redFlags": ["disguised utility", "file encryption", "payment demand"] },
+    "objectives": ["Security+ · malware identification", "Security operations"]
   }
 ]

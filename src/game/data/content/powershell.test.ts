@@ -28,6 +28,6 @@ describe("PowerShell training simulator", () => {
   it("never executes unsupported or real system commands", () => {
     const session = executePowerShell(createPowerShellSession(), "format c:");
     expect(session.output.join("\n")).toContain("not available in this safe simulator");
-    expect(session.files["c:\\users\\analyst\\documents\\readme.txt"].content).toContain("fictional");
+    expect(session.files["c:\\users\\analyst\\documents\\readme.txt"].content).toContain("simulated.");
   });
 });

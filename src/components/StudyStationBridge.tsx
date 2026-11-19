@@ -2,8 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CURRICULUM_CONTENT } from "@/game/data/content";
+import IncidentCommander from "@/components/IncidentCommander";
 import CyberPrepQuiz from "@/components/CyberPrepQuiz";
+import CohortCommons from "@/components/CohortCommons";
+import FoundDevice from "@/components/FoundDevice";
+import PhishHunt from "@/components/PhishHunt";
+import PacketLab from "@/components/PacketLab";
 import PowerShellOps from "@/components/PowerShellOps";
+import SQLDetective from "@/components/SQLDetective";
+import SOCShift from "@/components/SOCShift";
 import TerminalOps from "@/components/TerminalOps";
 import TypingDojo from "@/components/TypingDojo";
 import {
@@ -16,13 +23,25 @@ import {
 } from "@/game/data/securityPlus";
 
 type Request = { subject: StudySubjectId; stationId: string };
-type Mode = "guide" | "quiz" | "scenario" | "recall" | "calculate" | "sequence" | "dojo" | "cyberprep" | "terminal" | "powershell";
+type Mode = "guide" | "quiz" | "scenario" | "recall" | "calculate" | "sequence" | "dojo" | "cyberprep" | "terminal" | "powershell" | "phish" | "sql" | "packet" | "cohort" | "found-device" | "soc" | "incident";
 type StationProgress = { answered: number; correct: number; missed: Record<string, number> };
 type Progress = Record<string, StationProgress>;
 type Question = StudyQuestion | StudyScenario;
 type ActivityTutorial = { goal: string; steps: string[]; vocabulary: string[] };
+type AccessibilityPreferences = { largeText: boolean; highContrast: boolean; timersOff: boolean };
 
 const EMPTY_PROGRESS: Progress = {};
+const ACCESSIBILITY_STORAGE_KEY = "legend-study-accessibility-v1";
+const DEFAULT_ACCESSIBILITY: AccessibilityPreferences = { largeText: false, highContrast: false, timersOff: false };
+
+function isAccessibilityPreferences(value: unknown): value is AccessibilityPreferences {
+  if (!value || typeof value !== "object") return false;
+  const preferences = value as Record<string, unknown>;
+  return typeof preferences.largeText === "boolean"
+    && typeof preferences.highContrast === "boolean"
+    && typeof preferences.timersOff === "boolean";
+}
+
 const SEQUENCES: Record<string, Record<number, { prompt: string; steps: string[] }>> = {
   architecture: {
     0: {
@@ -129,7 +148,10 @@ export default function StudyStationBridge() {
   const [visible, setVisible] = useState(false);
   const [stationId, setStationId] = useState(SECURITY_PLUS_STATIONS[0].id);
   const [mode, setMode] = useState<Mode>("guide");
+  const [incidentReturnMode, setIncidentReturnMode] = useState(false);
   const [controlsOpen, setControlsOpen] = useState(false);
+  const [accessibility, setAccessibility] = useState<AccessibilityPreferences>(DEFAULT_ACCESSIBILITY);
+  const [accessibilityError, setAccessibilityError] = useState("");
   const [activityStarted, setActivityStarted] = useState(false);
   const [activityScore, setActivityScore] = useState({ correct: 0, answered: 0 });
   const [questionOrder, setQuestionOrder] = useState<number[]>([]);
@@ -160,6 +182,7 @@ export default function StudyStationBridge() {
           setRequest(payload);
           setStationId(payload.stationId);
           setMode("guide");
+          setIncidentReturnMode(false);
           setControlsOpen(false);
           setActivityStarted(false);
           setActivityIndex(0);
@@ -188,6 +211,19 @@ export default function StudyStationBridge() {
       disposed = true;
       removeListener();
     };
+  }, []);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(ACCESSIBILITY_STORAGE_KEY);
+      if (!raw) return;
+      const parsed: unknown = JSON.parse(raw);
+      if (!isAccessibilityPreferences(parsed)) throw new Error("Saved accessibility settings have an unexpected format.");
+      setAccessibility(parsed);
+    } catch (error) {
+      console.error("Could not load study accessibility settings.", error);
+      setAccessibilityError(error instanceof Error ? error.message : "Study accessibility settings could not be loaded.");
+    }
   }, []);
 
   useEffect(() => {
@@ -228,6 +264,7 @@ export default function StudyStationBridge() {
   }
 
   function beginMode(nextMode: Mode) {
+    setIncidentReturnMode(false);
     setMode(nextMode);
     setQuestionIndex(0);
     setSelectedAnswer(null);
@@ -249,10 +286,23 @@ export default function StudyStationBridge() {
     recallStarted.current = Date.now();
   }
 
+  function updateAccessibility(change: Partial<AccessibilityPreferences>) {
+    const updated = { ...accessibility, ...change };
+    setAccessibility(updated);
+    try {
+      localStorage.setItem(ACCESSIBILITY_STORAGE_KEY, JSON.stringify(updated));
+      setAccessibilityError("");
+    } catch (error) {
+      console.error("Could not save study accessibility settings.", error);
+      setAccessibilityError("These settings apply for this visit but could not be saved in this browser.");
+    }
+  }
+
   function chooseStation(nextStationId: string) {
     setStationId(nextStationId);
     setActivityIndex(0);
     setMode("guide");
+    setIncidentReturnMode(false);
     setActivityStarted(false);
     setActivityScore({ correct: 0, answered: 0 });
     setQuestionOrder([]);
@@ -388,7 +438,7 @@ export default function StudyStationBridge() {
 
   return (
     <div
-      className={`fixed inset-0 z-[120] bg-[#171817] p-1.5 transition-opacity duration-300 sm:p-3 ${visible ? "opacity-100" : "opacity-0"}`}
+      className={`fixed inset-0 z-[120] bg-[#171817] p-1.5 transition-opacity duration-300 sm:p-3 ${accessibility.largeText ? "study-large-text" : ""} ${accessibility.highContrast ? "study-high-contrast" : ""} ${visible ? "opacity-100" : "opacity-0"}`}
       role="dialog"
       aria-modal="true"
       aria-label={`${station.name} Security+ study terminal`}
@@ -415,11 +465,30 @@ export default function StudyStationBridge() {
               aria-expanded={controlsOpen}
               className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-2 text-left font-mono text-xs text-[#d4e4d3] hover:bg-white/5"
             >
-              <span><span className="text-[#9bc5a8]">STUDY MENU</span> · {station.name} · {mode === "guide" ? "Study guide" : mode === "dojo" ? "Typing Dojo" : mode === "cyberprep" ? "CyberPrep quiz" : mode === "terminal" ? "Terminal Ops" : mode === "powershell" ? "PowerShell Ops" : station.activities[activityIndex]}</span>
+              <span><span className="text-[#9bc5a8]">STUDY MENU</span> · {station.name} · {mode === "guide" ? "Study guide" : mode === "dojo" ? "Typing Dojo" : mode === "cyberprep" ? "CyberPrep quiz" : mode === "terminal" ? "Terminal Ops" : mode === "powershell" ? "PowerShell Ops" : mode === "phish" ? "Phish Hunt" : mode === "sql" ? "SQL Detective" : mode === "packet" ? "Packet Lab" : mode === "cohort" ? "Cohort Commons" : mode === "found-device" ? "Found Device" : mode === "soc" ? "SOC Shift" : mode === "incident" ? "Incident Commander" : station.activities[activityIndex]}</span>
               <span className="shrink-0 text-[#e7d8ac]">{controlsOpen ? "HIDE ▲" : "CHANGE / OPEN ▼"}</span>
             </button>
             {controlsOpen && (
               <div className="space-y-3 border-t border-[#405148] p-3 sm:p-4">
+                <fieldset className="rounded border border-[#405148] p-3">
+                  <legend className="px-2 font-mono text-[10px] tracking-[0.2em] text-[#9bc5a8]">ACCESSIBILITY · STUDY BUILDING ONLY</legend>
+                  <div className="flex flex-wrap gap-3 text-xs text-[#dbe1d4]">
+                    <label className="flex min-h-10 items-center gap-2 rounded border border-[#405148] px-3">
+                      <input type="checkbox" checked={accessibility.largeText} onChange={(event) => updateAccessibility({ largeText: event.target.checked })} />
+                      Larger text
+                    </label>
+                    <label className="flex min-h-10 items-center gap-2 rounded border border-[#405148] px-3">
+                      <input type="checkbox" checked={accessibility.highContrast} onChange={(event) => updateAccessibility({ highContrast: event.target.checked })} />
+                      High contrast
+                    </label>
+                    <label className="flex min-h-10 items-center gap-2 rounded border border-[#405148] px-3">
+                      <input type="checkbox" checked={accessibility.timersOff} onChange={(event) => updateAccessibility({ timersOff: event.target.checked })} />
+                      Turn off practice timers
+                    </label>
+                  </div>
+                  <p className="mt-2 text-[10px] text-[#aeb7a7]">Settings are stored on this device. Exam practice is untimed.</p>
+                  {accessibilityError && <p role="alert" className="mt-2 text-xs text-amber-200">{accessibilityError}</p>}
+                </fieldset>
                 <div>
                   <p className="mb-2 font-mono text-[10px] tracking-[0.2em] text-[#9bc5a8]">STUDY STATIONS</p>
                   <div className="flex flex-wrap gap-2">
@@ -492,6 +561,69 @@ export default function StudyStationBridge() {
                     >
                       PLAY · PowerShell Ops
                     </button>
+                    <button
+                      onClick={() => {
+                        beginMode("phish");
+                        setControlsOpen(false);
+                      }}
+                      className={modeButton(mode === "phish")}
+                    >
+                      PLAY · Phish Hunt
+                    </button>
+                    <button
+                      onClick={() => {
+                        beginMode("sql");
+                        setControlsOpen(false);
+                      }}
+                      className={modeButton(mode === "sql")}
+                    >
+                      PLAY · SQL Detective
+                    </button>
+                    <button
+                      onClick={() => {
+                        beginMode("packet");
+                        setControlsOpen(false);
+                      }}
+                      className={modeButton(mode === "packet")}
+                    >
+                      PLAY · Packet Lab
+                    </button>
+                    <button
+                      onClick={() => {
+                        beginMode("cohort");
+                        setControlsOpen(false);
+                      }}
+                      className={modeButton(mode === "cohort")}
+                    >
+                      OPEN · Cohort Commons
+                    </button>
+                    <button
+                      onClick={() => {
+                        beginMode("found-device");
+                        setControlsOpen(false);
+                      }}
+                      className={modeButton(mode === "found-device")}
+                    >
+                      PLAY · Found Device
+                    </button>
+                    <button
+                      onClick={() => {
+                        beginMode("soc");
+                        setControlsOpen(false);
+                      }}
+                      className={modeButton(mode === "soc")}
+                    >
+                      PLAY · SOC Shift
+                    </button>
+                    <button
+                      onClick={() => {
+                        beginMode("incident");
+                        setControlsOpen(false);
+                      }}
+                      className={modeButton(mode === "incident")}
+                    >
+                      PLAY · Incident Commander
+                    </button>
                   </div>
                 </div>
                 <p className="font-mono text-[10px] text-[#aeb7a7]">THIS STATION · {currentProgress.answered} answers · {accuracy}% accuracy · {missedCount} missed attempts · saved on this device</p>
@@ -502,15 +634,23 @@ export default function StudyStationBridge() {
           <section className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
             <div className="mx-auto max-w-6xl">
               <div className="mb-4 border-b border-[#405148] pb-4">
-                <p className="font-mono text-[10px] tracking-[0.25em] text-[#9bc5a8]">{mode === "dojo" || mode === "cyberprep" || mode === "terminal" || mode === "powershell" ? "CROSS-DISTRICT SKILL PRACTICE" : `STATION ${String(SECURITY_PLUS_STATIONS.indexOf(station) + 1).padStart(2, "0")} · SECURITY OPERATIONS`}</p>
-                <h1 className="mt-2 text-2xl font-bold text-[#f2e5b9] sm:text-3xl">{mode === "dojo" ? "Typing Dojo" : mode === "cyberprep" ? "Quiz & spaced review" : mode === "terminal" ? "Terminal Ops" : mode === "powershell" ? "PowerShell Ops" : station.name}</h1>
-                <p className="mt-2 max-w-3xl text-sm text-[#c5cebf]">{mode === "dojo" ? "Build accuracy and speed with cybersecurity terms, protocol ports, and practical security phrases." : mode === "cyberprep" ? "Practice original questions, revisit due cards, and see clear feedback for each answer." : mode === "terminal" ? "Practice beginner Bash commands in a safe, fictional filesystem." : mode === "powershell" ? "Practice Windows commands, pipeline filtering, and least-privilege concepts in a safe fictional system." : station.focus}</p>
+                <p className="font-mono text-[10px] tracking-[0.25em] text-[#9bc5a8]">{mode === "dojo" || mode === "cyberprep" || mode === "terminal" || mode === "powershell" || mode === "phish" || mode === "sql" || mode === "packet" || mode === "cohort" || mode === "found-device" || mode === "soc" || mode === "incident" ? "CROSS-DISTRICT SKILL PRACTICE" : `STATION ${String(SECURITY_PLUS_STATIONS.indexOf(station) + 1).padStart(2, "0")} · SECURITY OPERATIONS`}</p>
+                <h1 className="mt-2 text-2xl font-bold text-[#f2e5b9] sm:text-3xl">{mode === "dojo" ? "Typing Dojo" : mode === "cyberprep" ? "Quiz & spaced review" : mode === "terminal" ? "Terminal Ops" : mode === "powershell" ? "PowerShell Ops" : mode === "phish" ? "Phish Hunt" : mode === "sql" ? "SQL Detective" : mode === "packet" ? "Packet Lab" : mode === "cohort" ? "Cohort Commons" : mode === "found-device" ? "Found Device" : mode === "soc" ? "SOC Shift" : mode === "incident" ? "Incident Commander" : station.name}</h1>
+                <p className="mt-2 max-w-3xl text-sm text-[#c5cebf]">{mode === "dojo" ? "Build accuracy and speed with cybersecurity terms, protocol ports, and practical security phrases." : mode === "cyberprep" ? "Practice original questions, revisit due cards, and see clear feedback for each answer." : mode === "terminal" ? "Practice beginner Bash commands in a safe, fictional filesystem." : mode === "powershell" ? "Practice Windows commands, pipeline filtering, and least-privilege concepts in a safe fictional system." : mode === "phish" ? "Inspect fictional messages across email, phone, social, QR, and MFA channels without opening real links." : mode === "sql" ? "Investigate randomly generated login and device records with real read-only SQLite queries." : mode === "packet" ? "Inspect a fake capture in three panes and practice Wireshark display filters separately from BPF capture filters." : mode === "cohort" ? "Opt into account-based leaderboards, fictional Boss Round raids, and peer-written study notes." : mode === "found-device" ? "Practice physical security, device investigation, and safe first-response decisions in original workplace scenarios." : mode === "soc" ? "Triage fictional alerts, search simulated logs, practice a response playbook, and keep a local field journal." : mode === "incident" ? "Practice a complete, fictional incident lifecycle from detection through reporting and lessons learned." : station.focus}</p>
+                {incidentReturnMode && mode !== "incident" && <button type="button" onClick={() => beginMode("incident")} className="mt-3 min-h-10 rounded border border-[#c6d9a5] px-3 font-mono text-xs">RETURN TO INCIDENT COMMANDER</button>}
               </div>
 
-              {mode === "dojo" && <TypingDojo />}
+              {mode === "dojo" && <TypingDojo timersDisabled={accessibility.timersOff} />}
               {mode === "cyberprep" && <CyberPrepQuiz />}
               {mode === "terminal" && <TerminalOps />}
               {mode === "powershell" && <PowerShellOps />}
+              {mode === "phish" && <PhishHunt />}
+              {mode === "sql" && <SQLDetective />}
+              {mode === "packet" && <PacketLab />}
+              {mode === "cohort" && <CohortCommons />}
+              {mode === "found-device" && <FoundDevice onOpenLab={(nextMode) => { beginMode(nextMode); setControlsOpen(false); }} />}
+              {mode === "soc" && <SOCShift onOpenLab={(nextMode) => { beginMode(nextMode); setControlsOpen(false); }} />}
+              {(mode === "incident" || incidentReturnMode) && <div className={mode === "incident" ? "" : "hidden"}><IncidentCommander onOpenLab={(nextMode) => { beginMode(nextMode); setIncidentReturnMode(true); setControlsOpen(false); }} /></div>}
 
               {mode === "guide" && (
                 <div className="space-y-5">

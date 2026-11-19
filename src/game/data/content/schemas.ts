@@ -146,6 +146,7 @@ const IncidentStageSchema = z.discriminatedUnion("stage", [
   z.object({
     stage: z.literal("debrief"),
     csfRooms: z.array(nonEmptyString).min(1),
+    questions: z.record(z.string(), z.array(nonEmptyString).min(2).max(3)),
   }).strict(),
   z.object({
     stage: z.literal("report"),
@@ -162,8 +163,21 @@ const IncidentStageSchema = z.discriminatedUnion("stage", [
 export const IncidentCaseSchema = z.object({
   id: nonEmptyString,
   title: nonEmptyString,
+  objectives: z.array(nonEmptyString).min(1),
   stages: z.array(IncidentStageSchema).min(1),
-}).strict();
+}).strict().superRefine((incidentCase, context) => {
+  const requiredStages = ["detect", "investigate", "respond", "debrief", "report", "lessons"] as const;
+  const stageNames = incidentCase.stages.map((stage) => stage.stage);
+  for (const stage of requiredStages) {
+    if (stageNames.filter((name) => name === stage).length !== 1) {
+      context.addIssue({
+        code: "custom",
+        message: `An incident case must include exactly one "${stage}" stage.`,
+        path: ["stages"],
+      });
+    }
+  }
+});
 
 export const PlayerProgressSchema = z.object({
   playerId: nonEmptyString,
