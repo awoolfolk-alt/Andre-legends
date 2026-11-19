@@ -15,7 +15,14 @@ import { STORY, DialogueLine } from "../data/story";
 import { ABILITIES, MAX_POWER_LEVEL, thiefBasicDamage, xpToNext, zombieWaveInterval, ZOMBIE_WAVES } from "../data/combatData";
 import { COMPANIONS, COMPANION_BASE_HEALTH, CompanionId, GUNSLINGER_TRACKING_LASER, SHIELD_HERO, trackingLaserShots, WIZARD_AREA_ATTACK } from "../data/companions";
 import { PORTFOLIO_CLOSE_EVENT, PORTFOLIO_OPEN_EVENT } from "../data/portfolio";
-import { WORLD_BOUNDS, SAFE_TOWN, isInsideSafeTown } from "../systems/WorldRules";
+import {
+  WORLD_BOUNDS,
+  SAFE_TOWN,
+  STUDY_SAFE_ZONE,
+  isInsideSafeTown,
+  isInsideSafeZone,
+  isInsideStudySafeZone,
+} from "../systems/WorldRules";
 import { slashArc } from "../effects/SlashFX";
 // Safe Town multiplayer: presence broadcasts + visitor avatars
 import { SafeTownPresence } from "../net/presence";
@@ -26,6 +33,7 @@ import type { HudState } from "./UIScene";
 import type { RoomData } from "./RoomScene";
 // Synthesized sound effects (see audio/Sfx.ts)
 import { sfx } from "../audio/Sfx";
+import { STUDY_BUILDINGS } from "../data/securityPlus";
 
 // ─────────────────────────────────────────────────────────────
 // CHAPTER 1: THE FOREST OF ORIGINS
@@ -55,6 +63,12 @@ const BOSSES: (BossConfig & { x: number; y: number })[] = [
   { id: "nike", name: "The Nike Nightstalker", texture: "crimsonOracle", maxHp: 1100, color: 0xff3b5c, pattern: "barrage", attackEvery: 2200, moveSpeed: 90, xpReward: 400, x: 3190, y: 620 },
   { id: "self", name: "The Shadow of Andre", texture: "darkHero", maxHp: 1800, color: 0x9b48bb, pattern: "legacy", attackEvery: 1900, moveSpeed: 105, xpReward: 600, x: 3290, y: 2040 },
 ];
+
+const STUDY_DISTRICT = [
+  { subject: "a-plus", x: 620, y: 2440 },
+  { subject: "network-plus", x: 1240, y: 2440 },
+  { subject: "security-plus", x: 1860, y: 2440 },
+] as const;
 
 // The buildings of Safe Town. Each one opens a Room (an interior scene).
 const BUILDINGS: { x: number; y: number; texture: string; room: RoomData }[] = [
@@ -372,6 +386,17 @@ export class ForestScene extends Phaser.Scene {
     // Arenas (boss clearings) and the origin clearing
     path.fillStyle(0x321923, 0.72).fillEllipse(2460, 1780, 700, 460).fillEllipse(3190, 620, 700, 460);
     path.fillStyle(0x3a2935, 0.65).fillEllipse(SPAWN.x, SPAWN.y, 1000, 760);
+    path.fillStyle(0x6c5138, 0.75);
+    const studyRoad = [[1120, 1320], [1120, 1740], [1120, 2050], [1240, 2320]];
+    for (let i = 0; i < studyRoad.length - 1; i++) {
+      const [x1, y1] = studyRoad[i];
+      const [x2, y2] = studyRoad[i + 1];
+      const steps = Math.ceil(Phaser.Math.Distance.Between(x1, y1, x2, y2) / 20);
+      for (let step = 0; step <= steps; step++) {
+        path.fillCircle(Phaser.Math.Linear(x1, x2, step / steps), Phaser.Math.Linear(y1, y2, step / steps), 44);
+      }
+    }
+    path.fillStyle(0x392d2b, 0.82).fillEllipse(1240, 2440, 2070, 520);
     path.lineStyle(4, 0x9e4256, 0.55).strokeEllipse(2460, 1780, 660, 420).strokeEllipse(3190, 620, 660, 420);
     this.add.rectangle(
       (SAFE_TOWN.left + SAFE_TOWN.right) / 2,
@@ -388,6 +413,28 @@ export class ForestScene extends Phaser.Scene {
       stroke: "#24101c",
       strokeThickness: 4,
     }).setDepth(1);
+    this.add.text(1240, 2120, "STUDY DISTRICT  ·  A+  ·  NETWORK+  ·  SECURITY+", {
+      fontFamily: "Georgia, serif",
+      fontSize: "18px",
+      color: "#b9e8ff",
+      stroke: "#101522",
+      strokeThickness: 5,
+    }).setOrigin(0.5).setDepth(1);
+    this.add.rectangle(
+      (STUDY_SAFE_ZONE.left + STUDY_SAFE_ZONE.right) / 2,
+      (STUDY_SAFE_ZONE.top + STUDY_SAFE_ZONE.bottom) / 2,
+      STUDY_SAFE_ZONE.right - STUDY_SAFE_ZONE.left,
+      STUDY_SAFE_ZONE.bottom - STUDY_SAFE_ZONE.top,
+      0x78bde8,
+      0.07,
+    ).setStrokeStyle(5, 0x9bdcff, 0.7).setDepth(-7);
+    this.add.text(STUDY_SAFE_ZONE.left + 26, STUDY_SAFE_ZONE.top + 16, "SAFE STUDY ZONE  ·  NO ENEMIES OR DAMAGE", {
+      fontFamily: "Georgia, serif",
+      fontSize: "16px",
+      color: "#c5eaff",
+      stroke: "#101522",
+      strokeThickness: 4,
+    }).setDepth(1);
 
     this.colliders = this.physics.add.staticGroup();
 
@@ -395,7 +442,10 @@ export class ForestScene extends Phaser.Scene {
     const clear = (x: number, y: number) =>
       Phaser.Math.Distance.Between(x, y, SPAWN.x, SPAWN.y) < 420 ||
       isInsideSafeTown(x, y) ||
+      isInsideStudySafeZone(x, y) ||
       BUILDINGS.some((building) => Phaser.Math.Distance.Between(x, y, building.x, building.y - 80) < 250) ||
+      STUDY_DISTRICT.some((building) => Phaser.Math.Distance.Between(x, y, building.x, building.y - 80) < 300) ||
+      (y > 1850 && y < 2730 && x > 300 && x < 2200) ||
       Phaser.Math.Distance.Between(x, y, 2460, 1780) < 400 ||
       Phaser.Math.Distance.Between(x, y, 3190, 620) < 400 ||
       (y > 850 && y < 1050 && x > 1000 && x < 3600);
@@ -446,6 +496,34 @@ export class ForestScene extends Phaser.Scene {
       entrance.setLabel("[F] Enter");
       this.interactables.push(entrance);
     });
+    STUDY_DISTRICT.forEach(({ subject, x, y }, index) => {
+      const building = STUDY_BUILDINGS[subject];
+      const sprite = this.add.image(x, y, `building${index + 1}`).setOrigin(0.5, 1).setScale(1.4).setDepth(y);
+      sprite.setTint(index === 2 ? 0xb9d8ff : index === 1 ? 0xd6c49c : 0xb6c4a0);
+      this.blockBuilding(x - 160, y - 70, 38, 135);
+      this.blockBuilding(x + 160, y - 70, 38, 135);
+      this.blockBuilding(x, y - 174, 280, 30);
+      this.add.rectangle(x, y - 188, 240, 40, 0x101522, 0.96)
+        .setStrokeStyle(2, index === 2 ? 0x7dc7ff : 0xd4a72c)
+        .setDepth(y + 1);
+      this.add.text(x, y - 188, building.subject, {
+        fontFamily: "Georgia, serif",
+        fontSize: "16px",
+        color: index === 2 ? "#b9e8ff" : "#f1c66e",
+        align: "center",
+        wordWrap: { width: 220 },
+      }).setOrigin(0.5).setDepth(y + 2);
+      const entrance = new Interactable(this, x, y + 18, "spark", building.name, () => {
+        this.enterBuilding({
+          title: building.name,
+          subtitle: `${building.subject} · Four focused study stations`,
+          studySubject: subject,
+        });
+      }, 110);
+      entrance.sprite.setVisible(false);
+      entrance.setLabel("[F] Enter");
+      this.interactables.push(entrance);
+    });
   }
 
   private blockBuilding(x: number, y: number, width: number, height: number) {
@@ -456,8 +534,11 @@ export class ForestScene extends Phaser.Scene {
 
   private enterBuilding(room: RoomData) {
     this.input2.context = "locked";
-    this.scene.pause("Forest");
-    this.scene.launch("Room", room);
+    this.cameras.main.once("camerafadeoutcomplete", () => {
+      this.scene.pause("Forest");
+      this.scene.launch("Room", room);
+    });
+    this.cameras.main.fadeOut(1500, 0, 0, 0);
   }
 
   private startZombieWaves() {
@@ -482,6 +563,7 @@ export class ForestScene extends Phaser.Scene {
   }
 
   private spawnZombieWave() {
+    if (isInsideStudySafeZone(this.player.x, this.player.y)) return;
     this.zombieWave++;
     let spawned = 0;
     let attempts = 0;
@@ -491,7 +573,7 @@ export class ForestScene extends Phaser.Scene {
       const distance = Phaser.Math.Between(440, 720);
       const x = Phaser.Math.Clamp(this.player.x + Math.cos(angle) * distance, 60, WORLD.w - 60);
       const y = Phaser.Math.Clamp(this.player.y + Math.sin(angle) * distance, 140, WORLD.h - 60);
-      if (isInsideSafeTown(x, y)) continue;
+      if (isInsideSafeZone(x, y)) continue;
       this.zombies.push(new Zombie(
         this,
         x,
@@ -740,7 +822,7 @@ export class ForestScene extends Phaser.Scene {
     if (!enemies.length) return;
 
     this.companions.forEach((companion) => {
-      if (!companion.sprite.visible || isInsideSafeTown(companion.sprite.x, companion.sprite.y)) return;
+      if (!companion.sprite.visible || isInsideSafeZone(companion.sprite.x, companion.sprite.y)) return;
       if (time < (this.companionThreatReadyAt.get(companion.config.id) ?? 0)) return;
 
       const nearby = enemies
@@ -913,7 +995,7 @@ export class ForestScene extends Phaser.Scene {
         x: Phaser.Math.Clamp(target!.x + offset.x, 40, WORLD.w - 40),
         y: Phaser.Math.Clamp(target!.y + offset.y, 40, WORLD.h - 40),
       };
-      if (!isInsideSafeTown(destination.x, destination.y)) {
+      if (!isInsideSafeZone(destination.x, destination.y)) {
         this.player.sprite.setPosition(destination.x, destination.y).setVelocity(0, 0);
       }
       hit(target!, 85);
@@ -1050,7 +1132,7 @@ export class ForestScene extends Phaser.Scene {
   }
 
   private hurtPlayer(dmg: number, fromBoss = false) {
-    if (this.dead || this.player.isInvulnerable || isInsideSafeTown(this.player.x, this.player.y)) return;
+    if (this.dead || this.player.isInvulnerable || isInsideSafeZone(this.player.x, this.player.y)) return;
     const shieldHero = this.companions.get("shield");
 
     if (fromBoss && this.activeBoss?.isTaunting() && shieldHero?.canDefend) {

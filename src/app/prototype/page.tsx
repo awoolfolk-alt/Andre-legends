@@ -204,7 +204,7 @@ export default function PrototypePage() {
     }
   };
 
-  const shadowSegments = hud ? Math.ceil(hud.shadowHp / (hud.shadowMax / 8)) : 8;
+  const bossSegmentCount = hud?.bossId === "self" ? 8 : 1;
   const bossAccent = hud?.bossId === "empire"
     ? "#ff8b38"
     : hud?.bossId === "nike"
@@ -308,12 +308,12 @@ export default function PrototypePage() {
                 {hud.bossName}
               </p>
               <div className="flex gap-1">
-                {Array.from({ length: 8 }).map((_, i) => (
+                {Array.from({ length: bossSegmentCount }).map((_, i) => (
                   <div key={i} className="h-3 flex-1 overflow-hidden rounded-sm border border-white/25 bg-black/50">
                     <div
                       className="h-full transition-all duration-300"
                       style={{
-                        width: `${Math.max(0, Math.min(1, hud.shadowHp / (hud.shadowMax / 8) - i)) * 100}%`,
+                        width: `${Math.max(0, Math.min(1, hud.shadowHp / (hud.shadowMax / bossSegmentCount) - i)) * 100}%`,
                         backgroundColor: bossAccent,
                       }}
                     />
@@ -474,16 +474,27 @@ export default function PrototypePage() {
                 {embedded ? "BOSS DEFEATED" : "THE EIGHTH WORD"}
               </p>
               <h2 className="mt-3 bg-gradient-to-b from-[#fff3c4] to-legacy bg-clip-text text-4xl font-black text-transparent sm:text-6xl">
-                {embedded ? "The arena is yours." : <>Self Doubt didn&apos;t die.<br />It became Confidence.</>}
+                {embedded
+                  ? embeddedBoss === "empire"
+                    ? "The Revenant is silent."
+                    : embeddedBoss === "nike"
+                      ? "The Nightstalker has fallen."
+                      : "The arena is yours."
+                  : <>Self Doubt didn&apos;t die.<br />It became Confidence.</>}
               </h2>
               <p className="mx-auto mt-6 max-w-lg font-serif text-white/80">
                 {embedded
-                  ? "The word-duel is complete. Return to the story to continue your journey."
+                  ? embeddedBoss === "self"
+                    ? "The word-duel is complete. Return to the story to continue your journey."
+                    : "Return to the story to continue your journey."
                   : "Eight affirmations spoken true. The cracks took him apart gently, and the light that seeped out was yours all along."}
               </p>
               <p className="mt-4 text-sm text-white/50">
-                {victory.seconds}s on the summit · {victory.misses} misspelled{" "}
-                {victory.misses === 1 ? "spell" : "spells"}
+                {embedded && embeddedBoss !== "self"
+                  ? `${victory.seconds}s in the arena`
+                  : `${victory.seconds}s on the summit · ${victory.misses} misspelled ${
+                      victory.misses === 1 ? "spell" : "spells"
+                    }`}
               </p>
               <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
                 {embedded ? (

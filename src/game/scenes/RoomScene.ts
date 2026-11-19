@@ -1,6 +1,8 @@
 import * as Phaser from "phaser";
 import { loadSave } from "../save";
 import { personalizeText } from "../data/hero";
+import { EventBus, EVT } from "../systems/EventBus";
+import { SECURITY_PLUS_STATIONS, STUDY_BUILDINGS, type StudySubjectId } from "../data/securityPlus";
 
 export interface RoomData {
   title: string;
@@ -8,6 +10,7 @@ export interface RoomData {
   details?: readonly string[];
   musicLounge?: boolean;
   miniGames?: boolean;
+  studySubject?: StudySubjectId;
 }
 
 interface Platform {
@@ -125,61 +128,74 @@ export class RoomScene extends Phaser.Scene {
   private towerDefenseCell = 0;
   private towerDefenseOriginX = 0;
   private towerDefenseOriginY = 0;
+  private studyAvatar?: Phaser.GameObjects.Container;
+  private studyBusy = false;
+  private studyTerminalOpen = false;
+  private studyCloseHandler?: () => void;
 
   constructor() { super("Room"); }
 
   create(data: RoomData) {
     const { width, height } = this.scale;
-    this.cameras.main.setBackgroundColor("#100810");
-    this.add.rectangle(width / 2, height / 2, width - 64, height - 64, 0x24101c)
-      .setStrokeStyle(5, 0x9e4256);
-    this.add.rectangle(width / 2, 94, width - 96, 90, 0x140b14)
-      .setStrokeStyle(2, 0xd4a72c);
-    // Wall plaques tell the hero's story — use the player's name, just
-    // like the dialogue boxes do (see data/hero.ts).
-    const heroName = loadSave()?.name ?? "";
-    this.add.text(width / 2, 70, personalizeText(data.title, heroName), {
-      fontFamily: "Georgia, serif",
-      fontSize: "34px",
-      color: "#f3d7bd",
-      stroke: "#09050a",
-      strokeThickness: 4,
-    }).setOrigin(0.5);
-    this.add.text(width / 2, 118, personalizeText(data.subtitle, heroName), {
-      fontFamily: "Georgia, serif",
-      fontSize: "17px",
-      color: "#e69aab",
-    }).setOrigin(0.5);
-
-    this.add.rectangle(112, 310, 12, 250, 0x9e4256);
-    this.add.rectangle(width - 112, 310, 12, 250, 0x9e4256);
-    for (const x of [160, width - 160]) {
-      this.add.rectangle(x, 248, 58, 92, 0x66243b).setStrokeStyle(4, 0xd4a72c);
-      this.add.rectangle(x, 248, 7, 92, 0x1a1017);
-      this.add.rectangle(x, 248, 58, 7, 0x1a1017);
-    }
-
-    if (data.details && !data.musicLounge && !data.miniGames) {
-      this.add.text(190, 202, data.details.map((d) => personalizeText(d, heroName)).join("\n\n"), {
-        fontFamily: "Georgia, serif",
-        fontSize: "22px",
-        color: "#f2e8df",
-        lineSpacing: 10,
-        wordWrap: { width: width - 380 },
+    if (data.studySubject) {
+      this.drawStudyOffice(width, height, data.studySubject);
+      this.studyCloseHandler = () => this.returnFromStudyStation();
+      this.studyTerminalOpen = false;
+      EventBus.on(EVT.studyStationClose, this.studyCloseHandler);
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+        if (this.studyCloseHandler) EventBus.off(EVT.studyStationClose, this.studyCloseHandler);
       });
+    } else {
+      this.cameras.main.setBackgroundColor("#100810");
+      this.add.rectangle(width / 2, height / 2, width - 64, height - 64, 0x24101c)
+        .setStrokeStyle(5, 0x9e4256);
+      this.add.rectangle(width / 2, 94, width - 96, 90, 0x140b14)
+        .setStrokeStyle(2, 0xd4a72c);
+      const heroName = loadSave()?.name ?? "";
+      this.add.text(width / 2, 70, personalizeText(data.title, heroName), {
+        fontFamily: "Georgia, serif",
+        fontSize: "34px",
+        color: "#f3d7bd",
+        stroke: "#09050a",
+        strokeThickness: 4,
+      }).setOrigin(0.5);
+      this.add.text(width / 2, 118, personalizeText(data.subtitle, heroName), {
+        fontFamily: "Georgia, serif",
+        fontSize: "17px",
+        color: "#e69aab",
+      }).setOrigin(0.5);
+
+      this.add.rectangle(112, 310, 12, 250, 0x9e4256);
+      this.add.rectangle(width - 112, 310, 12, 250, 0x9e4256);
+      for (const x of [160, width - 160]) {
+        this.add.rectangle(x, 248, 58, 92, 0x66243b).setStrokeStyle(4, 0xd4a72c);
+        this.add.rectangle(x, 248, 7, 92, 0x1a1017);
+        this.add.rectangle(x, 248, 58, 7, 0x1a1017);
+      }
+
+      if (data.details && !data.musicLounge && !data.miniGames) {
+        this.add.text(190, 202, data.details.map((d) => personalizeText(d, heroName)).join("\n\n"), {
+          fontFamily: "Georgia, serif",
+          fontSize: "22px",
+          color: "#f2e8df",
+          lineSpacing: 10,
+          wordWrap: { width: width - 380 },
+        });
+      }
+
+      if (data.musicLounge) this.drawRecordDisplay(width);
+      if (data.miniGames) {
+        this.activeMiniGame = null;
+        this.platformerState = "ready";
+        this.towerDefenseState = "ready";
+        this.platformerTouch = { left: false, right: false, jump: false };
+        this.drawArcade(width, height);
+        this.input.on("pointerdown", this.handleTowerDefenseClick, this);
+        this.input.keyboard?.on("keydown-R", this.handleArcadeRestart, this);
+      }
     }
 
-    if (data.musicLounge) this.drawRecordDisplay(width);
-    if (data.miniGames) {
-      // Re-entering this scene should always return to the Arcade menu.
-      this.activeMiniGame = null;
-      this.platformerState = "ready";
-      this.towerDefenseState = "ready";
-      this.platformerTouch = { left: false, right: false, jump: false };
-      this.drawArcade(width, height);
-      this.input.on("pointerdown", this.handleTowerDefenseClick, this);
-      this.input.keyboard?.on("keydown-R", this.handleArcadeRestart, this);
-    }
+    this.cameras.main.fadeIn(1500, 0, 0, 0);
 
     const exitText = this.add.text(width / 2, height - 82, "F or ESC  ·  Leave this building", {
       fontFamily: "Georgia, serif",
@@ -189,7 +205,10 @@ export class RoomScene extends Phaser.Scene {
       padding: { x: 12, y: 8 },
     }).setOrigin(0.5).setDepth(20).setInteractive({ useHandCursor: true });
 
+    let leaving = false;
     const leave = () => {
+      if (leaving || (data.studySubject && this.studyTerminalOpen)) return;
+      leaving = true;
       this.input.keyboard?.off("keydown-F", leave);
       this.input.keyboard?.off("keydown-ESC", leave);
       this.input.keyboard?.off("keydown-R", this.handleArcadeRestart, this);
@@ -197,12 +216,181 @@ export class RoomScene extends Phaser.Scene {
       this.musicPlayer?.destroy();
       this.musicPlayer = undefined;
       this.musicFrame = undefined;
-      this.scene.stop();
-      this.scene.resume("Forest");
+      this.cameras.main.once("camerafadeoutcomplete", () => {
+        this.scene.stop();
+        this.scene.resume("Forest");
+        this.scene.get("Forest").cameras.main.fadeIn(1500, 0, 0, 0);
+      });
+      this.cameras.main.fadeOut(1500, 0, 0, 0);
     };
-    this.input.keyboard!.once("keydown-F", leave);
-    this.input.keyboard!.once("keydown-ESC", leave);
+    this.input.keyboard!.on("keydown-F", leave);
+    this.input.keyboard!.on("keydown-ESC", leave);
     exitText.on("pointerdown", leave);
+  }
+
+  private drawStudyOffice(width: number, height: number, subject: StudySubjectId) {
+    const building = STUDY_BUILDINGS[subject];
+    this.cameras.main.setBackgroundColor("#181b1c");
+    this.add.rectangle(width / 2, height / 2, width - 52, height - 52, 0x30302b)
+      .setStrokeStyle(4, 0x807453);
+    this.add.rectangle(width / 2, 118, width - 88, 110, 0x222522)
+      .setStrokeStyle(2, 0x928763);
+    this.add.text(width / 2, 82, building.name.toUpperCase(), {
+      fontFamily: "Consolas, monospace",
+      fontSize: "27px",
+      color: "#e7d8ac",
+      fontStyle: "bold",
+    }).setOrigin(0.5);
+    this.add.text(width / 2, 132, `${building.subject}  ·  RETRO SOC TRAINING FLOOR`, {
+      fontFamily: "Consolas, monospace",
+      fontSize: "15px",
+      color: "#a9d8bd",
+    }).setOrigin(0.5);
+    this.add.rectangle(width / 2, 196, width - 150, 3, 0x857a5d);
+    this.add.rectangle(width / 2, height - 70, width - 110, 56, 0x242522)
+      .setStrokeStyle(1, 0x807453);
+
+    const stations = subject === "security-plus" ? SECURITY_PLUS_STATIONS : null;
+    const labels = stations?.map((station) => station.name) ?? [
+      subject === "a-plus" ? "Hardware & Devices" : "Network Foundations",
+      subject === "a-plus" ? "Operating Systems" : "Ports & Protocols",
+      subject === "a-plus" ? "Troubleshooting" : "Network Operations",
+      subject === "a-plus" ? "Security Basics" : "Network Security",
+    ];
+    const positions = [
+      { x: width * 0.29, y: 318 },
+      { x: width * 0.71, y: 318 },
+      { x: width * 0.29, y: 493 },
+      { x: width * 0.71, y: 493 },
+    ];
+    positions.forEach(({ x, y }, index) => {
+      const station = stations?.[index];
+      this.drawWorkstation(x, y, labels[index], index + 1, Boolean(station), width);
+      if (station && building.available) {
+        this.add.zone(x, y + 8, 460, 160)
+          .setInteractive({ useHandCursor: true })
+          .on("pointerover", () => this.input.setDefaultCursor("pointer"))
+          .on("pointerout", () => this.input.setDefaultCursor("default"))
+          .on("pointerdown", () => this.openStudyStation(subject, station.id, x, y - 45, width, height));
+      }
+    });
+
+    if (building.available) {
+      this.add.text(width / 2, 602, "SELECT A STATION  ·  THE ANALYST WALKS OVER, SITS, THEN CONNECTS", {
+        fontFamily: "Consolas, monospace",
+        fontSize: "13px",
+        color: "#a9d8bd",
+      }).setOrigin(0.5);
+    } else {
+      this.add.text(width / 2, 602, "CURRICULUM IN PREPARATION  ·  THIS LAB WILL OPEN IN A FUTURE STUDY UPDATE", {
+        fontFamily: "Consolas, monospace",
+        fontSize: "13px",
+        color: "#e7c77a",
+      }).setOrigin(0.5);
+    }
+
+    const avatar = this.add.container(width / 2, height - 116);
+    avatar.add([
+      this.add.ellipse(0, 26, 48, 12, 0x080a0c, 0.45),
+      this.add.rectangle(0, 2, 24, 34, 0x243b51).setStrokeStyle(2, 0x9db4c4),
+      this.add.circle(0, -22, 12, 0x754d3b).setStrokeStyle(2, 0xd7b59c),
+      this.add.rectangle(-7, 48, 8, 22, 0x202127),
+      this.add.rectangle(7, 48, 8, 22, 0x202127),
+    ]);
+    avatar.setDepth(12);
+    this.studyAvatar = avatar;
+    this.studyBusy = false;
+  }
+
+  private drawWorkstation(x: number, y: number, label: string, number: number, enabled: boolean, width: number) {
+    const deskWidth = Math.min(470, width * 0.37);
+    this.add.rectangle(x, y + 48, deskWidth, 20, 0x65462f).setStrokeStyle(2, 0xa58458);
+    this.add.rectangle(x - deskWidth * 0.38, y + 87, 14, 62, 0x483728);
+    this.add.rectangle(x + deskWidth * 0.38, y + 87, 14, 62, 0x483728);
+    this.add.rectangle(x, y - 4, 174, 92, 0x272b2c).setStrokeStyle(5, 0x777b72);
+    this.add.rectangle(x, y - 6, 148, 67, enabled ? 0x173b38 : 0x1a211e)
+      .setStrokeStyle(2, enabled ? 0x8ac7a6 : 0x4c554e);
+    if (enabled) {
+      this.add.text(x, y - 17, `SECURITY+  /  ${String(number).padStart(2, "0")}`, {
+        fontFamily: "Consolas, monospace",
+        fontSize: "11px",
+        color: "#a9e3be",
+      }).setOrigin(0.5);
+      this.add.text(x, y + 3, label.toUpperCase(), {
+        fontFamily: "Consolas, monospace",
+        fontSize: "9px",
+        color: "#e7d8ac",
+        align: "center",
+        wordWrap: { width: 130 },
+      }).setOrigin(0.5);
+    } else {
+      this.add.text(x, y - 5, "LAB OFFLINE", {
+        fontFamily: "Consolas, monospace",
+        fontSize: "12px",
+        color: "#9b9b88",
+      }).setOrigin(0.5);
+    }
+    this.add.rectangle(x - 106, y - 2, 28, 54, 0x272b2c).setStrokeStyle(3, 0x777b72);
+    for (let i = 0; i < 6; i++) this.add.circle(x - 111 + (i % 2) * 10, y - 17 + Math.floor(i / 2) * 12, 2, 0x8a8b7f);
+    this.add.rectangle(x + 2, y + 30, 154, 10, 0x24282a).setStrokeStyle(1, 0x85887e);
+    for (let i = 0; i < 12; i++) this.add.rectangle(x - 66 + i * 12, y + 29, 7, 2, 0x8c9389);
+    this.add.rectangle(x + 142, y + 7, 19, 31, 0x292d2e).setStrokeStyle(2, 0x777b72);
+    this.add.circle(x + 142, y - 4, 3, enabled ? 0x72d29a : 0x777b72);
+    this.add.text(x, y + 116, `${String(number).padStart(2, "0")}  ·  ${label}`, {
+      fontFamily: "Consolas, monospace",
+      fontSize: "13px",
+      color: enabled ? "#e7d8ac" : "#96978d",
+      align: "center",
+      wordWrap: { width: deskWidth - 24 },
+    }).setOrigin(0.5);
+  }
+
+  private openStudyStation(subject: StudySubjectId, stationId: string, x: number, y: number, width: number, height: number) {
+    if (this.studyBusy || !this.studyAvatar) return;
+    this.studyBusy = true;
+    this.tweens.add({
+      targets: this.studyAvatar,
+      x,
+      y: y + 120,
+      scale: 0.68,
+      duration: 720,
+      ease: "Cubic.easeInOut",
+      onComplete: () => {
+        this.studyAvatar?.setY(y + 108);
+        this.tweens.add({
+          targets: this.studyAvatar,
+          y: y + 112,
+          duration: 180,
+          yoyo: true,
+          onComplete: () => {
+            this.cameras.main.pan(x, y, 1050, "Cubic.easeInOut");
+            this.cameras.main.zoomTo(2.8, 1050, "Cubic.easeInOut");
+            this.time.delayedCall(1100, () => {
+              this.studyTerminalOpen = true;
+              EventBus.emit(EVT.studyStationOpen, { subject, stationId, width, height });
+            });
+          },
+        });
+      },
+    });
+  }
+
+  private returnFromStudyStation() {
+    this.studyTerminalOpen = false;
+    const { width, height } = this.scale;
+    this.cameras.main.pan(width / 2, height / 2, 850, "Cubic.easeInOut");
+    this.cameras.main.zoomTo(1, 850, "Cubic.easeInOut");
+    if (this.studyAvatar) {
+      this.tweens.add({
+        targets: this.studyAvatar,
+        x: width / 2,
+        y: height - 116,
+        scale: 1,
+        duration: 850,
+        ease: "Cubic.easeOut",
+      });
+    }
+    this.time.delayedCall(850, () => { this.studyBusy = false; });
   }
 
   update(_time: number, delta: number) {

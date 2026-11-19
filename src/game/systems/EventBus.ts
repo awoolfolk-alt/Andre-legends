@@ -41,6 +41,9 @@ export const EVT = {
   // The 3D boss arena completed or was exited; return control to the world.
   boss3dComplete: "boss:3dComplete",
   boss3dCancel: "boss:3dCancel",
+  // Room -> React: open a focused computer station; React -> room: return to the office.
+  studyStationOpen: "study:stationOpen",
+  studyStationClose: "study:stationClose",
   // HUD -> World: ESC pressed; the world pauses and the HUD shows the pause panel
   pause: "game:pause",
   // HUD -> World: "Save & Exit" was clicked in the pause menu

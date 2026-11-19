@@ -2,7 +2,7 @@ import * as Phaser from "phaser";
 import { Damageable, HitInfo } from "./Damageable";
 import { Player } from "./Player";
 import { sparks } from "../effects/SlashFX";
-import { clampToWorld, isInsideSafeTown } from "../systems/WorldRules";
+import { clampToWorld, isInsideSafeZone } from "../systems/WorldRules";
 
 export class Zombie implements Damageable {
   sprite: Phaser.GameObjects.Image;
@@ -30,7 +30,7 @@ export class Zombie implements Damageable {
       this.nextAttackAt = time + 900;
       return;
     }
-    if (isInsideSafeTown(player.x, player.y)) return;
+    if (isInsideSafeZone(player.x, player.y)) return;
     const dx = player.x - this.x;
     const dy = player.y - this.y;
     const distance = Math.hypot(dx, dy);
@@ -38,7 +38,7 @@ export class Zombie implements Damageable {
     if (distance > this.radius + 18) {
       const step = Math.min(distance - this.radius - 18, (75 * delta) / 1000);
       const next = clampToWorld(this.x + (dx / distance) * step, this.y + (dy / distance) * step, this.radius);
-      if (!isInsideSafeTown(next.x, next.y)) this.sprite.setPosition(next.x, next.y);
+      if (!isInsideSafeZone(next.x, next.y)) this.sprite.setPosition(next.x, next.y);
       this.sprite.setFlipX(dx < 0);
     } else if (time >= this.nextAttackAt) {
       this.nextAttackAt = time + 900;

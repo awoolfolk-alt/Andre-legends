@@ -35,6 +35,8 @@ import {
 // Panel is either null (no pop-up open) or the name of one pop-up.
 type Panel = null | "legend" | "future" | "credits" | "cloud" | "continue";
 
+const MENU_HOVER_TRANSITION = { type: "spring" as const, stiffness: 320, damping: 24 };
+
 // The list of menu buttons. Keeping them in an array means we can draw all
 // buttons with one loop (.map below) instead of writing 4 buttons by hand.
 // "action" says what happens on click: "play" starts the game, the rest open a panel.
@@ -202,7 +204,7 @@ export default function MainMenu() {
   //   bg-gradient-to-b from-[..] via-[..] to-[..] = a top-to-bottom color fade (night sky)
   //   font-display = our Cinzel font (defined in tailwind.config.ts)
   return (
-    <main onMouseMove={onMove} className="relative h-screen w-screen overflow-hidden bg-gradient-to-b from-[#0b1430] via-[#1b2a4a] to-[#3b2a3a] font-display">
+    <main onMouseMove={onMove} className="relative min-h-screen min-h-[100dvh] w-full overflow-x-hidden bg-gradient-to-b from-[#0b1430] via-[#1b2a4a] to-[#3b2a3a] font-display">
       {/* Sky glow + stars (far layer) */}
       {/* motion.div is a normal div that Framer Motion can animate. style={far} hooks it */}
       {/* to the parallax values above. absolute inset-[-5%] = fill the screen plus a bit */}
@@ -270,11 +272,11 @@ export default function MainMenu() {
       </motion.div>
 
       {/* Title + menu */}
-      {/* z-10 puts this above the background layers. flex flex-col = stack children in a */}
-      {/* column; items-center justify-center = center them; gap-10 = space between them. */}
+      {/* z-10 puts this above the background layers. Shorter gaps and a compact grid */}
+      {/* keep the featured links visible, while the page can scroll on small screens. */}
       {/* When leaving, the whole menu fades out and zooms toward you (scale 1.4). */}
       <motion.div
-        className="relative z-10 flex h-full flex-col items-center justify-center gap-10 px-4"
+        className="relative z-10 flex min-h-screen min-h-[100dvh] flex-col items-center justify-center gap-6 px-4 py-8"
         animate={leaving ? { opacity: 0, scale: 1.4 } : { opacity: 1, scale: 1 }}
         transition={{ duration: 0.8 }}
       >
@@ -293,7 +295,7 @@ export default function MainMenu() {
         </motion.div>
 
         {/* The menu buttons, drawn from the MENU array with .map. */}
-        <nav className="flex flex-col gap-3">
+        <nav className="grid w-full max-w-[34rem] grid-cols-2 gap-2 sm:gap-3">
           {/* Continue only appears when a saved adventure exists. It sits above the */}
           {/* list like a "welcome back" greeting, with the hero's name and level. */}
           {existing && (
@@ -302,9 +304,9 @@ export default function MainMenu() {
               initial={{ opacity: 0, x: -40 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.5 }}
-              whileHover={{ scale: 1.08, x: 10, boxShadow: "0 0 24px rgba(79,209,255,0.6)" }}
-              whileTap={{ scale: 0.96 }}
-              className="w-72 rounded-lg border border-energy/60 bg-navy/70 px-6 py-3 text-left text-lg text-energy backdrop-blur"
+              whileHover={{ scale: 1.025, y: -2, boxShadow: "0 0 18px rgba(79,209,255,0.45)", transition: MENU_HOVER_TRANSITION }}
+              whileTap={{ scale: 0.985, transition: MENU_HOVER_TRANSITION }}
+              className="col-span-2 w-full rounded-lg border border-energy/60 bg-navy/70 px-4 py-2.5 text-left text-base text-energy backdrop-blur sm:px-6 sm:py-3 sm:text-lg"
             >
               ▸ Continue
             </motion.button>
@@ -320,27 +322,17 @@ export default function MainMenu() {
               initial={{ opacity: 0, x: -40 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.6 + i * 0.12 }}
-              whileHover={{ scale: 1.08, x: 10, boxShadow: "0 0 24px rgba(212,167,44,0.6)" }}
-              whileTap={{ scale: 0.96 }}
-              className="w-72 rounded-lg border border-legacy/50 bg-navy/70 px-6 py-3 text-left text-lg text-[#f3e3b5] backdrop-blur"
+              whileHover={{ scale: 1.025, y: -2, boxShadow: "0 0 18px rgba(212,167,44,0.45)", transition: MENU_HOVER_TRANSITION }}
+              whileTap={{ scale: 0.985, transition: MENU_HOVER_TRANSITION }}
+              className={`w-full rounded-lg border border-legacy/50 bg-navy/70 px-4 py-2.5 text-left text-base text-[#f3e3b5] backdrop-blur sm:px-6 sm:py-3 sm:text-lg${i === 0 ? " col-span-2" : ""}`}
             >
               ⚔ {item.label}
             </motion.button>
           ))}
-          {/* Design review door: the redesign mocks live at /mock for */}
-          {/* approval BEFORE anything is rebuilt for real. Distinct */}
-          {/* dashed border = "work in progress, come look". */}
-          <motion.button
-            onClick={() => router.push("/mock")}
-            initial={{ opacity: 0, x: -40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.6 + MENU.length * 0.12 }}
-            whileHover={{ scale: 1.08, x: 10, boxShadow: "0 0 24px rgba(127,216,255,0.6)" }}
-            whileTap={{ scale: 0.96 }}
-            className="w-72 rounded-lg border border-dashed border-[#7fd8ff]/70 bg-navy/70 px-6 py-3 text-left text-lg text-[#7fd8ff] backdrop-blur"
-          >
-            ✦ Design Mocks
-          </motion.button>
+        </nav>
+
+        {/* Featured links form a pyramid: the prototype above Vision and Design Mocks. */}
+        <div className="grid w-full max-w-[38rem] grid-cols-2 items-center gap-x-3 gap-y-2 sm:gap-x-6 sm:gap-y-3">
           {/* The playable first-person prototype: Mock B-1 (the Walk) + */}
           {/* B-2 (the Shadow fight). Same dashed treatment, gold tone. */}
           <motion.button
@@ -348,9 +340,9 @@ export default function MainMenu() {
             initial={{ opacity: 0, x: -40 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.72 + MENU.length * 0.12 }}
-            whileHover={{ scale: 1.08, x: 10, boxShadow: "0 0 24px rgba(212,167,44,0.6)" }}
-            whileTap={{ scale: 0.96 }}
-            className="w-72 rounded-lg border border-dashed border-legacy/70 bg-navy/70 px-6 py-3 text-left text-lg text-[#f3e3b5] backdrop-blur"
+            whileHover={{ scale: 1.025, y: -2, boxShadow: "0 0 18px rgba(212,167,44,0.45)", transition: MENU_HOVER_TRANSITION }}
+            whileTap={{ scale: 0.985, transition: MENU_HOVER_TRANSITION }}
+            className="col-span-2 w-[min(100%,22rem)] justify-self-center rounded-lg border border-dashed border-legacy/70 bg-navy/80 px-4 py-3 text-center text-base text-[#f3e3b5] shadow-lg shadow-black/20 backdrop-blur sm:px-6 sm:py-3 sm:text-lg"
           >
             🗡 Playable Prototype
           </motion.button>
@@ -361,13 +353,25 @@ export default function MainMenu() {
             initial={{ opacity: 0, x: -40 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.84 + MENU.length * 0.12 }}
-            whileHover={{ scale: 1.08, x: 10, boxShadow: "0 0 24px rgba(196,130,255,0.6)" }}
-            whileTap={{ scale: 0.96 }}
-            className="w-72 rounded-lg border border-dashed border-[#c482ff]/70 bg-navy/70 px-6 py-3 text-left text-lg text-[#c482ff] backdrop-blur"
+            whileHover={{ scale: 1.025, y: -2, boxShadow: "0 0 18px rgba(196,130,255,0.45)", transition: MENU_HOVER_TRANSITION }}
+            whileTap={{ scale: 0.985, transition: MENU_HOVER_TRANSITION }}
+            className="w-full rounded-lg border border-dashed border-[#c482ff]/70 bg-navy/80 px-3 py-3 text-center text-sm text-[#c482ff] shadow-lg shadow-black/20 backdrop-blur sm:px-5 sm:text-base"
           >
             🌌 The Vision
           </motion.button>
-        </nav>
+          {/* Design review door: the redesign mocks live at /mock. */}
+          <motion.button
+            onClick={() => router.push("/mock")}
+            initial={{ opacity: 0, x: -40 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.6 + MENU.length * 0.12 }}
+            whileHover={{ scale: 1.025, y: -2, boxShadow: "0 0 18px rgba(127,216,255,0.45)", transition: MENU_HOVER_TRANSITION }}
+            whileTap={{ scale: 0.985, transition: MENU_HOVER_TRANSITION }}
+            className="w-full rounded-lg border border-dashed border-[#7fd8ff]/70 bg-navy/80 px-3 py-3 text-center text-sm text-[#7fd8ff] shadow-lg shadow-black/20 backdrop-blur sm:px-5 sm:text-base"
+          >
+            ✦ Design Mocks
+          </motion.button>
+        </div>
       </motion.div>
 
       {/* Info panels */}

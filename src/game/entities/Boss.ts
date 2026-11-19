@@ -2,7 +2,7 @@ import * as Phaser from "phaser";
 import { Damageable, HitInfo } from "./Damageable";
 import { Player } from "./Player";
 import { shockwave, sparks } from "../effects/SlashFX";
-import { clampToWorld, isInsideSafeTown, isWithinWorld } from "../systems/WorldRules";
+import { clampToWorld, isInsideSafeZone, isWithinWorld } from "../systems/WorldRules";
 
 // ─────────────────────────────────────────────────────────────
 // BOSS = a LESSON LEARNED.
@@ -128,7 +128,7 @@ export class Boss implements Damageable {
     const dy = target.y - this.y;
     const dist = Math.hypot(dx, dy);
     const enraged = this.hp < this.cfg.maxHp / 2; // phase 2 at half health
-    if (isInsideSafeTown(this.player.x, this.player.y)) return;
+    if (isInsideSafeZone(this.player.x, this.player.y)) return;
 
     // Slow chase (barrage boss keeps its distance instead)
     const wantClose = this.cfg.pattern !== "barrage";
@@ -136,7 +136,7 @@ export class Boss implements Damageable {
       const sign = wantClose || dist > 260 ? 1 : -1;
       const step = (this.cfg.moveSpeed * sign * this.scene.game.loop.delta) / 1000;
       const next = clampToWorld(this.x + (dx / dist) * step, this.y + (dy / dist) * step, this.radius);
-      if (!isInsideSafeTown(next.x, next.y)) this.sprite.setPosition(next.x, next.y);
+      if (!isInsideSafeZone(next.x, next.y)) this.sprite.setPosition(next.x, next.y);
     }
     this.sprite.setDepth(this.y).setFlipX(dx < 0);
 
@@ -218,7 +218,7 @@ export class Boss implements Damageable {
     const dy = target.y - this.y;
     const distance = Math.hypot(dx, dy) || 1;
     const shadowstep = clampToWorld(this.x + (dx / distance) * 120, this.y + (dy / distance) * 120, this.radius);
-    if (!isInsideSafeTown(shadowstep.x, shadowstep.y)) this.sprite.setPosition(shadowstep.x, shadowstep.y);
+    if (!isInsideSafeZone(shadowstep.x, shadowstep.y)) this.sprite.setPosition(shadowstep.x, shadowstep.y);
 
     const angle = Math.atan2(target.y - this.y, target.x - this.x);
     const orb = this.scene.add.text(this.x, this.y - 48, "✦", {
@@ -250,13 +250,13 @@ export class Boss implements Damageable {
       p.obj.x += p.vx * dt;
       p.obj.y += p.vy * dt;
       const outOfBounds = !isWithinWorld(p.obj.x, p.obj.y);
-      const enteredTown = isInsideSafeTown(p.obj.x, p.obj.y);
-      if (outOfBounds || enteredTown) {
+      const enteredSafeZone = isInsideSafeZone(p.obj.x, p.obj.y);
+      if (outOfBounds || enteredSafeZone) {
         p.obj.destroy();
         return false;
       }
       const target = this.getAttackTarget(time);
-      const hitPlayer = !isInsideSafeTown(this.player.x, this.player.y) &&
+      const hitPlayer = !isInsideSafeZone(this.player.x, this.player.y) &&
         Phaser.Math.Distance.Between(p.obj.x, p.obj.y, target.x, target.y - 24) < 26;
       if (hitPlayer) this.onPlayerHit(12);
       if (hitPlayer || time - p.born > 3500) { p.obj.destroy(); return false; }

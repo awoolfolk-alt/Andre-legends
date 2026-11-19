@@ -1,34 +1,22 @@
-# GitHub Pages deploy for The Legend of Andre + Andre's portfolio
+# Build the Next.js app as static files and publish it to the repository Pages URL:
+# https://awoolfolk-alt.github.io/Andre-legends/
 #
-# WHAT THIS DOES: every push to main, GitHub builds the game as plain
-# HTML/JS/CSS and publishes ONE combined site to Pages:
-#   /awoolfolk/        → the portfolio (index.html + game.js from repo root)
-#   /awoolfolk/game/   → the game (Next.js static export)
-#
-# SETUP (once, in the GitHub website):
-#   1. Push this repo to GitHub (repo name: awoolfolk)
-#   2. Settings → Pages → Source: choose "GitHub Actions"
-#   3. Push to main. Wait ~2 minutes.
-#
-# WHY the two env vars? STATIC_EXPORT=1 turns on Next.js's "output: export"
-# mode (see next.config.mjs), and BASE_PATH=/awoolfolk/game makes every link
-# work under the game's subpath on github.io.
-#
-# WHY the assemble step? upload-pages-artifact replaces the WHOLE site, so
-# the game export must be combined with the portfolio files first — otherwise
-# every deploy would wipe the portfolio off the repo root.
+# In GitHub, set Settings → Pages → Build and deployment → Source to GitHub Actions.
+# Every push to main deploys the complete site, including /game/ and its assets.
 
 name: Deploy to GitHub Pages
 
 on:
   push:
     branches: [main]
-  workflow_dispatch: # adds a "Run workflow" button so you can redeploy by hand
+  workflow_dispatch:
 
-# Let one deploy finish before the next starts
 concurrency:
   group: pages
   cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -40,20 +28,14 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm run build
+      - name: Build static Next.js site
+        run: npm run build
         env:
           STATIC_EXPORT: "1"
-          BASE_PATH: /awoolfolk/game
-      # Combine: portfolio at the site root, game export under game/.
-      # The portfolio is self-contained apart from game.js (tic-tac-toe).
-      - name: Assemble combined site
-        run: |
-          mkdir -p site/game
-          cp index.html game.js site/
-          cp -r out/* site/game/
+          BASE_PATH: /Andre-legends
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: site/
+          path: out/
 
   deploy:
     needs: build

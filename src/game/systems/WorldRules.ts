@@ -1,6 +1,6 @@
 import * as Phaser from "phaser";
 
-export const WORLD_BOUNDS = { width: 3800, height: 2600 };
+export const WORLD_BOUNDS = { width: 3800, height: 3200 };
 
 export const SAFE_TOWN = {
   left: 420,
@@ -9,13 +9,29 @@ export const SAFE_TOWN = {
   bottom: 1540,
 };
 
+export const STUDY_SAFE_ZONE = {
+  left: 400,
+  right: 2140,
+  top: 2200,
+  bottom: 2700,
+};
+
 export function isWithinWorld(x: number, y: number): boolean {
   return x >= 0 && y >= 0 && x <= WORLD_BOUNDS.width && y <= WORLD_BOUNDS.height;
+}
+
+export function isInsideStudySafeZone(x: number, y: number): boolean {
+  return x >= STUDY_SAFE_ZONE.left && x <= STUDY_SAFE_ZONE.right &&
+    y >= STUDY_SAFE_ZONE.top && y <= STUDY_SAFE_ZONE.bottom;
 }
 
 export function isInsideSafeTown(x: number, y: number): boolean {
   return x >= SAFE_TOWN.left && x <= SAFE_TOWN.right &&
     y >= SAFE_TOWN.top && y <= SAFE_TOWN.bottom;
+}
+
+export function isInsideSafeZone(x: number, y: number): boolean {
+  return isInsideSafeTown(x, y) || isInsideStudySafeZone(x, y);
 }
 
 export function clampToWorld(x: number, y: number, margin = 40): Phaser.Math.Vector2 {

@@ -18,6 +18,7 @@ import PortfolioOverlay from "@/components/PortfolioOverlay";
 // The floating sound on/off button (pause lives in the game's own ESC menu).
 import GameOverlay from "@/components/GameOverlay";
 import BossArenaBridge from "@/components/BossArenaBridge";
+import StudyStationBridge from "@/components/StudyStationBridge";
 // Starts the cloud mirror so in-game saves also sync when the player is
 // logged in — even if they opened /game directly without visiting the menu.
 import { initCloudSync } from "@/game/cloud";
@@ -32,12 +33,13 @@ export default function GamePage() {
   return (
     // relative = lets the buttons below position themselves inside this box.
     // h-screen w-screen = fill the whole window. bg-[#060b16] = deep night-blue.
-    <main className="relative h-screen w-screen select-none bg-[#060b16]">
+    <main className="fixed inset-0 h-dvh w-screen select-none overflow-hidden bg-[#060b16]">
       {/* The game canvas fills the page. */}
       <PhaserGame />
       <PortfolioOverlay />
       <GameOverlay />
       <BossArenaBridge />
+      <StudyStationBridge />
       {/* A small button floating in the top-right corner that takes the
           player back to the main menu at "/". It sits at 12vh so it lines
           up with the sound button on the left and clears the game's HUD. */}

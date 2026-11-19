@@ -6,6 +6,8 @@
 // useEffect = run some code AFTER the component appears on screen.
 import { useEffect, useRef } from "react";
 
+const activeGames = new WeakMap<HTMLElement, import("phaser").Game>();
+
 // The bridge between React and Phaser.
 // WHY dynamic import inside useEffect? Phaser needs `window`, which
 // doesn't exist when Next.js renders on the server. useEffect only
@@ -19,6 +21,9 @@ export default function PhaserGame() {
 
   // The empty [] at the end means "run this once, when the component first appears".
   useEffect(() => {
+    const host = container.current;
+    if (!host) return;
+
     // We remember the game so we can shut it down later.
     let game: import("phaser").Game | undefined;
     // If the player leaves the page before Phaser finishes loading, this flag
@@ -29,8 +34,15 @@ export default function PhaserGame() {
     // Promise, and .then(...) runs once the file has finished loading.
     import("@/game/config").then(({ createGame }) => {
       // Only start the game if we're still on the page and the <div> exists.
-      if (!cancelled && container.current) {
-        game = createGame(container.current);
+      if (!cancelled) {
+        const existingGame = activeGames.get(host);
+        if (existingGame) {
+          existingGame.destroy(true);
+          activeGames.delete(host);
+        }
+        host.replaceChildren();
+        game = createGame(host);
+        activeGames.set(host, game);
         (window as unknown as { __legend?: unknown }).__legend = game; // handy for debugging in DevTools
       }
     });
@@ -46,7 +58,11 @@ export default function PhaserGame() {
     return () => {
       cancelled = true;
       window.removeEventListener("resize", refresh);
-      game?.destroy(true); // clean up when leaving the page
+      if (game && activeGames.get(host) === game) {
+        activeGames.delete(host);
+        game.destroy(true);
+        host.replaceChildren();
+      }
     };
   }, []);
 
